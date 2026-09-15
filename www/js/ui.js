@@ -261,9 +261,22 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       const li = document.createElement('li');
       li.className = `erfolg seltenheit-${f.seltenheit} ${gefangen ? '' : 'offen'}`;
       li.title = gefangen ? f.text : 'Auf Expeditionen zu finden.';
-      li.innerHTML = `
+      const inhalt = `
         <span class="erfolg-symbol" aria-hidden="true">${gefangen ? f.symbol : '❔'}</span>
         <span class="erfolg-name">${gefangen ? f.name : 'Unbekannt'}</span>`;
+      // Gefangene Fische lassen sich antippen und zeigen ihre Details in
+      // einem eigenen Dialog - unbekannte bleiben bewusst nicht interaktiv.
+      // Der Button übernimmt per CSS (.erfolg-knopf) exakt das Aussehen der
+      // sonst reinen Textkarte, damit das Grid-Layout gleich bleibt.
+      if (gefangen) {
+        const knopf = document.createElement('button');
+        knopf.className = 'erfolg-knopf';
+        knopf.innerHTML = inhalt;
+        knopf.addEventListener('click', () => zeigeAquariumFisch(f));
+        li.appendChild(knopf);
+      } else {
+        li.innerHTML = inhalt;
+      }
       knoten.listeAquarium.appendChild(li);
     }
   }
@@ -649,7 +662,13 @@ export function erzeugeOberflaeche(zustand, aktionen) {
   let aktiverReiter = 'reiter-module';
 
   for (const knopf of reiterKnoepfe) {
-    knopf.addEventListener('click', () => waehleReiter(knopf.id));
+    knopf.addEventListener('click', () => {
+      // Nur bei echtem Antippen der Reiterleiste, nicht bei programmatischen
+      // Wechseln (z. B. Ziel-Chip, Reset nach dem Aufstieg) - dort passt der
+      // Klick akustisch nicht zum jeweils eigenen Moment.
+      aktionen.beiReiterwechsel?.();
+      waehleReiter(knopf.id);
+    });
   }
 
   function waehleReiter(id) {
@@ -802,6 +821,20 @@ export function zeigeKiste(ergebnis, optionen = {}) {
   };
 }
 
+/** Zeigt die Details eines bereits gefangenen Aquarium-Fisches. */
+export function zeigeAquariumFisch(fisch) {
+  const dialog = $('dialog-fisch');
+  dialog.className = `dialog dialog-entdeckung seltenheit-${fisch.seltenheit}`;
+  $('fisch-symbol').textContent = fisch.symbol;
+  $('fisch-seltenheit').textContent = SELTENHEITEN[fisch.seltenheit]?.label ?? fisch.seltenheit;
+  $('fisch-titel').textContent = fisch.name;
+  $('fisch-text').textContent = fisch.text;
+  const prozent = Math.round((fisch.bonus - 1) * 1000) / 10;
+  $('fisch-bonus').textContent = `Dauerhaft +${prozent} % Ausbeute`;
+  zeigeDialog('overlay-fisch');
+  $('fisch-ok').onclick = () => schliesseDialog('overlay-fisch');
+}
+
 /** Zeigt, was eine abgeholte Expedition eingebracht hat. */
 export function zeigeExpeditionErgebnis(def, ergebnis, beimSchliessen) {
   $('expedition-erg-symbol').textContent = def?.symbol ?? '🚣';
@@ -838,7 +871,18 @@ let gluecksradGesamtwinkel = 0;
  * hier geht es nur noch um den Weg dorthin. `beimFertig` wird aufgerufen,
  * sobald das Rad steht (Belohnung erst dann zeigen, nicht vorher).
  */
-export function spinneGluecksrad(segmentIndex, beimFertig) {
+const GLUECKSRAD_SPIN_MS = 3600;
+const GLUECKSRAD_SPIN_MS_REDUZIERT = 400;
+const GLUECKSRAD_TICKS = 22;
+
+/**
+ * @param {number} segmentIndex
+ * @param {{beimTick?: () => void, beimFertig?: () => void}} [optionen]
+ *   `beimTick` wird während der Drehung mehrfach mit abnehmendem Abstand
+ *   aufgerufen (nachlassendes Rad-Ticken), `beimFertig` einmal am Ende.
+ */
+export function spinneGluecksrad(segmentIndex, optionen = {}) {
+  const { beimTick, beimFertig } = optionen;
   const rad = $('gluecksrad');
   const segAnzahl = GLUECKSRAD_SEGMENTE.length;
   const segWinkel = 360 / segAnzahl;
@@ -855,10 +899,19 @@ export function spinneGluecksrad(segmentIndex, beimFertig) {
   while (ziel <= gluecksradGesamtwinkel) ziel += 360;
   gluecksradGesamtwinkel = ziel;
 
-  rad.style.transition = WENIGER_BEWEGUNG
-    ? 'transform 0.4s ease'
-    : 'transform 3.6s cubic-bezier(0.17, 0.89, 0.32, 1.1)';
+  const dauerMs = WENIGER_BEWEGUNG ? GLUECKSRAD_SPIN_MS_REDUZIERT : GLUECKSRAD_SPIN_MS;
+  rad.style.transition = `transform ${dauerMs}ms cubic-bezier(0.17, 0.89, 0.32, 1.1)`;
   rad.style.transform = `rotate(${gluecksradGesamtwinkel}deg)`;
+
+  if (beimTick && !WENIGER_BEWEGUNG) {
+    // Nachlassendes Ticken: am Anfang dicht (Rad dreht schnell), zum Ende hin
+    // auseinandergezogen (Rad wird langsamer) – quadratische Ease-out-Kurve,
+    // passend zur CSS-Transition des Rads selbst.
+    for (let i = 1; i <= GLUECKSRAD_TICKS; i++) {
+      const anteil = 1 - Math.pow(1 - i / GLUECKSRAD_TICKS, 2);
+      setTimeout(beimTick, anteil * dauerMs);
+    }
+  }
 
   let ausgefuehrt = false;
   const fertig = () => {
@@ -870,7 +923,7 @@ export function spinneGluecksrad(segmentIndex, beimFertig) {
   rad.addEventListener('transitionend', fertig);
   // Netz, falls transitionend aus irgendeinem Grund nicht feuert (z. B. Tab
   // im Hintergrund gedrosselt).
-  setTimeout(fertig, WENIGER_BEWEGUNG ? 500 : 3800);
+  setTimeout(fertig, dauerMs + 200);
 }
 
 export function zeigeWillkommen(ertrag, sekunden, abgeschnitten, aufVerdoppeln) {
@@ -886,6 +939,30 @@ export function zeigeWillkommen(ertrag, sekunden, abgeschnitten, aufVerdoppeln) 
   knopf.hidden = ertrag <= 0;
   knopf.onclick = () => aufVerdoppeln?.(ertrag);
   zeigeDialog('overlay-willkommen');
+}
+
+/** Der einmalige Marianengraben-Moment: großer Dialog mit ein paar Eckdaten der Reise bisher. */
+export function zeigeMarianengraben(zustand, beimSchliessen) {
+  const liste = $('marianengraben-werte');
+  liste.textContent = '';
+  const werte = [
+    ['Gesamte Ausbeute', `${zahl(zustand.gesamtGesamt)} BL`],
+    ['Tiefster Punkt', `${ganzzahl(zustand.maxTiefe)} m`],
+    ['Auftauchen', ganzzahl(zustand.aufstiege)],
+    ['Spielzeit', dauer(zustand.spielzeit)],
+  ];
+  for (const [bezeichnung, wert] of werte) {
+    const dt = document.createElement('dt');
+    dt.textContent = bezeichnung;
+    const dd = document.createElement('dd');
+    dd.textContent = wert;
+    liste.append(dt, dd);
+  }
+  zeigeDialog('overlay-marianengraben');
+  $('marianengraben-ok').onclick = () => {
+    schliesseDialog('overlay-marianengraben');
+    beimSchliessen?.();
+  };
 }
 
 export function fuelleMenue(zustand, werte) {

@@ -319,3 +319,41 @@ export function expeditionZurueck() {
     });
   });
 }
+
+/** Leiser Wechsel-Klick beim Reiterwechsel – dezente Rückmeldung, kein Ereignis. */
+export function reiterWechsel() {
+  if (!bereit()) return;
+  ton({ frequenz: 880, dauer: 0.05, form: 'sine', lautstaerke: 0.1 });
+}
+
+/** Menü öffnen/schließen – ebenso dezent, unterscheidet sich nur in der Tonhöhe. */
+export function menue(oeffnen = true) {
+  if (!bereit()) return;
+  ton({ frequenz: oeffnen ? 660 : 520, dauer: 0.05, form: 'sine', lautstaerke: 0.1 });
+}
+
+/** Einzelnes, weiches Ticken – das Glücksrad, das gerade an einem Feld vorbeiläuft. */
+export function gluecksradTick() {
+  if (!bereit()) return;
+  ton({ frequenz: 1500, dauer: 0.03, form: 'square', lautstaerke: 0.09, anstieg: 0.001 });
+}
+
+/**
+ * Der Marianengraben-Moment: tief, langsam, ehrfürchtig – bewusst kein Jubel
+ * wie bei aufstieg(), sondern eher ein andächtiges „geschafft“. Der tiefste
+ * Klang im ganzen Spiel, passend zum tiefsten Punkt der Karte.
+ */
+export function marianengraben() {
+  if (!bereit()) return;
+  ton({ frequenz: 55, dauer: 3.2, form: 'sine', lautstaerke: 0.32, gleiten: 1.4 });
+  [0, 7, 12, 19, 24].forEach((halbton, i) => {
+    ton({
+      frequenz: halbtonZuFrequenz(halbton, 130),
+      dauer: 2.4,
+      form: 'triangle',
+      lautstaerke: 0.16,
+      verzoegerung: 0.3 + i * 0.35,
+    });
+  });
+  rauschen({ dauer: 2, lautstaerke: 0.04, hochpass: 200 });
+}

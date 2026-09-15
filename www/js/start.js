@@ -17,6 +17,7 @@ import {
   zeigeKiste,
   zeigeExpeditionErgebnis,
   spinneGluecksrad,
+  zeigeMarianengraben,
   fuelleMenue,
 } from './ui.js';
 import { zahl, ganzzahl, dauer } from './zahlen.js';
@@ -149,25 +150,28 @@ const oberflaeche = erzeugeOberflaeche(zustand, {
     oberflaeche.aktualisiere(zustand);
     speicher.speichern(zustand);
 
-    spinneGluecksrad(ergebnis.segmentIndex, () => {
-      const segment = ergebnis.segment;
-      const text =
-        segment.art === 'bl'
-          ? `${segment.symbol} +${zahl(ergebnis.bl)} BL!`
-          : `${segment.symbol} ${segment.text}`;
-      oberflaeche.melde(text, 3000);
+    spinneGluecksrad(ergebnis.segmentIndex, {
+      beimTick: () => klang.gluecksradTick(),
+      beimFertig: () => {
+        const segment = ergebnis.segment;
+        const text =
+          segment.art === 'bl'
+            ? `${segment.symbol} +${zahl(ergebnis.bl)} BL!`
+            : `${segment.symbol} ${segment.text}`;
+        oberflaeche.melde(text, 3000);
 
-      const klaenge = { bl: 'blaseEingesammelt', boost: 'fischGefangen', kiste: 'kauf', perlen: 'erfolg' };
-      klang[klaenge[segment.art]]?.();
+        const klaenge = { bl: 'blaseEingesammelt', boost: 'fischGefangen', kiste: 'kauf', perlen: 'erfolg' };
+        klang[klaenge[segment.art]]?.();
 
-      const rad = document.getElementById('gluecksrad');
-      const rahmen = rad.getBoundingClientRect();
-      funken.kritischerStoss(rahmen.left + rahmen.width / 2, rahmen.top + rahmen.height / 2);
-      vibriere(segment.art === 'kiste' ? [20, 30, 20, 30, 40] : [15, 25, 15]);
+        const rad = document.getElementById('gluecksrad');
+        const rahmen = rad.getBoundingClientRect();
+        funken.kritischerStoss(rahmen.left + rahmen.width / 2, rahmen.top + rahmen.height / 2);
+        vibriere(segment.art === 'kiste' ? [20, 30, 20, 30, 40] : [15, 25, 15]);
 
-      pruefeFortschritt();
-      oberflaeche.aktualisiere(zustand);
-      speicher.speichern(zustand);
+        pruefeFortschritt();
+        oberflaeche.aktualisiere(zustand);
+        speicher.speichern(zustand);
+      },
     });
   },
 
@@ -205,6 +209,10 @@ const oberflaeche = erzeugeOberflaeche(zustand, {
     });
     oberflaeche.aktualisiere(zustand);
     speicher.speichern(zustand);
+  },
+
+  beiReiterwechsel() {
+    klang.reiterWechsel();
   },
 });
 
@@ -309,6 +317,7 @@ let dialogOffen = false;
 
 function pruefeFortschritt() {
   for (const e of spiel.pruefeEntdeckungen(zustand)) entdeckungsWarteschlange.push(e);
+  if (spiel.pruefeMarianengraben(zustand)) marianengrabenBereit = true;
   const neueErfolge = spiel.pruefeErfolge(zustand);
   for (const e of neueErfolge) {
     oberflaeche.melde(`${e.symbol} Erfolg: ${e.name}`);
@@ -317,6 +326,7 @@ function pruefeFortschritt() {
   if (neueErfolge.length > 0) erfolgsKistenAusstehend += neueErfolge.length;
   zeigeNaechsteEntdeckung();
   versucheErfolgsKisteZuZeigen();
+  versucheMarianengrabenZuZeigen();
 }
 
 function zeigeNaechsteEntdeckung() {
@@ -684,6 +694,26 @@ erfolgsKisteEl.addEventListener('pointerdown', (ereignis) => {
   }, ERFOLGSKISTE_FLUG_MS);
 });
 
+/* ---------------- Marianengraben-Moment ----------------
+ * Einmaliger, größerer Abschluss-Moment beim ersten Erreichen von 11.000 m
+ * (siehe spiel.pruefeMarianengraben) – wartet wie die Entdeckungen darauf,
+ * dass gerade kein anderer Dialog offen ist, statt sich dazwischenzudrängen. */
+
+let marianengrabenBereit = false;
+
+function versucheMarianengrabenZuZeigen() {
+  if (!marianengrabenBereit || dialogOffen) return;
+  marianengrabenBereit = false;
+  dialogOffen = true;
+  klang.marianengraben();
+  vibriere([40, 80, 40, 80, 120]);
+  zeigeMarianengraben(zustand, () => {
+    dialogOffen = false;
+    oberflaeche.aktualisiere(zustand);
+    zeigeNaechsteEntdeckung();
+  });
+}
+
 /* ---------------- Aufstieg ---------------- */
 
 document.getElementById('knopf-aufstieg').addEventListener('click', () => {
@@ -731,10 +761,12 @@ document.getElementById('knopf-menue').addEventListener('click', () => {
   document.getElementById('menue-werbefrei').hidden = zustand.werbefrei;
   schalterTon.setAttribute('aria-pressed', String(klang.istAn() || leseEinstellung('tiefenrausch.ton', true)));
   schalterVibration.setAttribute('aria-pressed', String(vibrationAn));
+  klang.menue(true);
   zeigeDialog('overlay-menue');
 });
 
 document.getElementById('menue-schliessen').addEventListener('click', () => {
+  klang.menue(false);
   schliesseDialog('overlay-menue');
 });
 

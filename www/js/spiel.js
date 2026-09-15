@@ -89,6 +89,7 @@ export function neuerZustand() {
     perlenShop: [],
     gluecksradLetzteDrehung: null,
     gluecksradGedreht: 0,
+    marianengrabenGesehen: false,
   };
 }
 
@@ -340,6 +341,23 @@ export function pruefeEntdeckungen(zustand) {
   return neu;
 }
 
+/** Tiefe des Marianengrabens im Spiel – deckt sich mit dem Beginn der Grabenzone. */
+export const MARIANENGRABEN_TIEFE = 11_000;
+
+/**
+ * Einmaliger Abschluss-Moment beim ersten Erreichen des Marianengrabens.
+ * Anders als bei den Erfolgen (kurzer Hinweis) bekommt dieser Meilenstein
+ * einen eigenen, größeren Dialog in der Oberfläche – das Spiel geht danach
+ * ganz normal weiter, es ist ein Höhepunkt, kein echtes Ende.
+ * @returns {boolean} true, wenn der Moment gerade jetzt neu ausgelöst wurde
+ */
+export function pruefeMarianengraben(zustand) {
+  if (zustand.marianengrabenGesehen) return false;
+  if (zustand.maxTiefe < MARIANENGRABEN_TIEFE) return false;
+  zustand.marianengrabenGesehen = true;
+  return true;
+}
+
 /** @returns {Array} neu erreichte Erfolge */
 export function pruefeErfolge(zustand) {
   const neu = [];
@@ -377,16 +395,37 @@ export function kritChanceFuer(kombo) {
 }
 
 /**
+ * Kappung gegen Auto-Clicker und Skripte: schneller als 20 Tipps/Sek. wird
+ * komplett ignoriert (nicht nur schwächer vergütet) – sonst würde sich
+ * Automatisierung am Ende doch wieder lohnen. Von Hand ist dieses Tempo
+ * praktisch nicht erreichbar, es trifft also nur automatisierte Eingaben.
+ */
+export const TIPP_MAX_PRO_SEKUNDE = 20;
+export const TIPP_MINDESTABSTAND_MS = 1000 / TIPP_MAX_PRO_SEKUNDE;
+
+/**
  * Ein Antippen.
  *
  * @param {object} zustand
  * @param {number} [jetzt]
  * @param {() => number} [zufall] Quelle für Zufallszahlen in [0, 1) – austauschbar,
  *   damit kritische Treffer in Tests ohne Zufall auslösbar/ausschließbar sind.
- * @returns {{ertrag:number, kombo:number, komboFaktor:number, kritisch:boolean, basisErtrag:number}}
+ * @returns {{ertrag:number, kombo:number, komboFaktor:number, kritisch:boolean, basisErtrag:number, gekappt?:boolean}}
  */
 export function tippe(zustand, jetzt = Date.now(), zufall = Math.random) {
   const seitLetztem = jetzt - (zustand.komboLetzterTipp ?? 0);
+
+  if (zustand.tipps > 0 && seitLetztem < TIPP_MINDESTABSTAND_MS) {
+    return {
+      ertrag: 0,
+      kombo: zustand.kombo ?? 0,
+      komboFaktor: komboFaktorFuer(zustand.kombo ?? 0),
+      kritisch: false,
+      basisErtrag: 0,
+      gekappt: true,
+    };
+  }
+
   zustand.kombo = seitLetztem <= komboFensterEffektiv(zustand) ? (zustand.kombo ?? 0) + 1 : 1;
   zustand.komboLetzterTipp = jetzt;
   if (zustand.kombo > (zustand.komboMax ?? 0)) zustand.komboMax = zustand.kombo;
@@ -498,6 +537,9 @@ export function aufstieg(zustand) {
     // Spielrunde.
     gluecksradLetzteDrehung: zustand.gluecksradLetzteDrehung,
     gluecksradGedreht: zustand.gluecksradGedreht,
+    // Hängt an maxTiefe, das selbst schon erhalten bleibt - der Moment darf
+    // nicht bei jedem weiteren Aufstieg erneut aufploppen.
+    marianengrabenGesehen: zustand.marianengrabenGesehen,
   };
 
   const frisch = neuerZustand();

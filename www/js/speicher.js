@@ -100,6 +100,7 @@ export function zusammenfuehren(vorlage, gelesen) {
   }
 
   zustand.werbefrei = gelesen.werbefrei === true;
+  zustand.marianengrabenGesehen = gelesen.marianengrabenGesehen === true;
 
   // Module: nur bekannte Kennungen übernehmen.
   zustand.module = {};

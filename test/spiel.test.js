@@ -689,12 +689,18 @@ test('Zeitangaben sind in allen Größenordnungen sinnvoll', () => {
 
 test('Eine simulierte Stunde führt zu plausiblem Fortschritt ohne Zahlenfehler', () => {
   const z = spiel.neuerZustand();
+  // Eigene, simulierte Uhr statt Date.now(): der Test läuft in echter Zeit in
+  // Millisekunden ab, „alle 5 Sekunden“ wäre mit echter Zeit also ständig
+  // schneller als die 20-Tipps/Sek.-Kappung erlaubt und praktisch jeder Tipp
+  // würde verworfen.
+  let jetzt = Date.now();
 
   // Zwei Stunden simulieren: jede Sekunde ein Tick, alle 5 Sekunden ein Tipp,
   // und immer kaufen, was gerade bezahlbar ist.
   for (let sekunde = 0; sekunde < 7200; sekunde++) {
-    spiel.tick(z, 1);
-    if (sekunde % 5 === 0) spiel.tippe(z);
+    jetzt += 1000;
+    spiel.tick(z, 1, jetzt);
+    if (sekunde % 5 === 0) spiel.tippe(z, jetzt);
 
     for (const modul of MODULE) {
       if (z.bl >= spiel.modulPreis(z, modul.id, 1) * 1.2) {
@@ -1273,4 +1279,99 @@ test('Speicher: kaputte gluecksradLetzteDrehung wird zu null, gültige bleibt er
   const gueltig = zusammenfuehren(vorlage, { gluecksradLetzteDrehung: 123456, gluecksradGedreht: 7 });
   assert.equal(gueltig.gluecksradLetzteDrehung, 123456);
   assert.equal(gueltig.gluecksradGedreht, 7);
+});
+
+/* ------------------------------------------------------------------ */
+/* Kappung gegen Auto-Clicker (20 Tipps/Sek.)                          */
+/* ------------------------------------------------------------------ */
+
+test('Der allererste Tipp wird nie gekappt, egal bei welchem Zeitstempel', () => {
+  const z = spiel.neuerZustand();
+  const ergebnis = spiel.tippe(z, 0, () => 1);
+  assert.equal(ergebnis.gekappt, undefined);
+  assert.equal(z.tipps, 1);
+});
+
+test('Schneller als 20/Sek. wird der Tipp verworfen: kein Ertrag, kein Zählen, kein Komboaufbau', () => {
+  const z = spiel.neuerZustand();
+  spiel.tippe(z, 0, () => 1);
+
+  const zuSchnell = spiel.tippe(z, spiel.TIPP_MINDESTABSTAND_MS - 1, () => 1);
+  assert.equal(zuSchnell.gekappt, true);
+  assert.equal(zuSchnell.ertrag, 0);
+  assert.equal(z.tipps, 1, 'darf nicht mitgezählt werden');
+  assert.equal(z.kombo, 1, 'darf die Kombo nicht verändern');
+});
+
+test('Genau am Limit (20/Sek.) zählt der Tipp noch normal', () => {
+  const z = spiel.neuerZustand();
+  spiel.tippe(z, 0, () => 1);
+  const amLimit = spiel.tippe(z, spiel.TIPP_MINDESTABSTAND_MS, () => 1);
+  assert.equal(amLimit.gekappt, undefined);
+  assert.equal(z.tipps, 2);
+});
+
+test('Nach einer Kappung zählt der nächste, ausreichend späte Tipp wieder normal', () => {
+  const z = spiel.neuerZustand();
+  spiel.tippe(z, 0, () => 1);
+  spiel.tippe(z, 5, () => 1); // gekappt, wird ignoriert
+  const danach = spiel.tippe(z, spiel.TIPP_MINDESTABSTAND_MS + 10, () => 1);
+  assert.equal(danach.gekappt, undefined);
+  assert.equal(z.tipps, 2, 'der gekappte Tipp in der Mitte darf nicht mitzählen');
+});
+
+test('20 Tipps pro Sekunde am Stück werden alle angenommen, der 21. in derselben Sekunde nicht', () => {
+  const z = spiel.neuerZustand();
+  let jetzt = 0;
+  for (let i = 0; i < 20; i++) {
+    const ergebnis = spiel.tippe(z, jetzt, () => 1);
+    assert.equal(ergebnis.gekappt, undefined, `Tipp ${i + 1} sollte noch zählen`);
+    jetzt += spiel.TIPP_MINDESTABSTAND_MS;
+  }
+  assert.equal(z.tipps, 20);
+});
+
+/* ------------------------------------------------------------------ */
+/* Marianengraben-Moment                                               */
+/* ------------------------------------------------------------------ */
+
+test('Marianengraben-Moment löst erst bei ausreichender Tiefe aus, dann genau einmal', () => {
+  const z = spiel.neuerZustand();
+  assert.equal(spiel.pruefeMarianengraben(z), false);
+
+  z.maxTiefe = spiel.MARIANENGRABEN_TIEFE - 1;
+  assert.equal(spiel.pruefeMarianengraben(z), false);
+
+  z.maxTiefe = spiel.MARIANENGRABEN_TIEFE;
+  assert.equal(spiel.pruefeMarianengraben(z), true);
+  assert.equal(z.marianengrabenGesehen, true);
+
+  // Ein zweiter Aufruf (z. B. nächster Frame) darf nicht erneut auslösen.
+  assert.equal(spiel.pruefeMarianengraben(z), false);
+});
+
+test('Marianengraben-Tiefe deckt sich mit dem Beginn der Grabenzone', () => {
+  const grabenzone = zoneFuer(spiel.MARIANENGRABEN_TIEFE);
+  assert.equal(grabenzone.name, 'Grabenzone');
+  assert.equal(zoneFuer(spiel.MARIANENGRABEN_TIEFE - 1).name, 'Abgrundzone');
+});
+
+test('Marianengraben-Moment übersteht einen Aufstieg (kein erneutes Auslösen danach)', () => {
+  const z = spiel.neuerZustand();
+  z.maxTiefe = spiel.MARIANENGRABEN_TIEFE;
+  spiel.pruefeMarianengraben(z);
+  z.gesamtRunde = 4e6;
+  z.gesamtGesamt = 9e6;
+
+  spiel.aufstieg(z);
+
+  assert.equal(z.marianengrabenGesehen, true);
+  assert.equal(spiel.pruefeMarianengraben(z), false);
+});
+
+test('Speicher: marianengrabenGesehen wird als echtes Boolean übernommen', () => {
+  const vorlage = spiel.neuerZustand();
+  assert.equal(zusammenfuehren(vorlage, { marianengrabenGesehen: true }).marianengrabenGesehen, true);
+  assert.equal(zusammenfuehren(vorlage, { marianengrabenGesehen: 'ja' }).marianengrabenGesehen, false);
+  assert.equal(zusammenfuehren(vorlage, {}).marianengrabenGesehen, false);
 });
