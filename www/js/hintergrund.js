@@ -231,23 +231,35 @@ export function starteHintergrund(leinwand, holeTiefe, holeModule = () => ({})) 
     stift.restore();
   }
 
-  /** Zeichnet ein Emoji-Symbol blickrichtungsgerecht (gespiegelt bei Bewegung nach links). */
-  function zeichneSymbol(symbol, x, y, groesse, richtung, deckkraft) {
+  /**
+   * Zeichnet einen simplen, selbst gezeichneten Silhouetten-Fisch (Körper,
+   * Schwanzflosse, Auge) statt eines Emoji-Zeichens – blickrichtungsgerecht
+   * gespiegelt bei Bewegung nach links.
+   */
+  function zeichneVektorFisch(x, y, groesse, richtung, deckkraft, farbe = '#bfe8ff') {
     stift.save();
     stift.globalAlpha = deckkraft;
-    stift.font = `${groesse}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
-    stift.textAlign = 'center';
-    stift.textBaseline = 'middle';
     stift.translate(x, y);
     if (richtung < 0) stift.scale(-1, 1);
-    stift.fillText(symbol, 0, 0);
+    stift.fillStyle = farbe;
+    stift.beginPath();
+    stift.ellipse(0, 0, groesse * 0.5, groesse * 0.3, 0, 0, Math.PI * 2);
+    stift.moveTo(-groesse * 0.42, 0);
+    stift.lineTo(-groesse * 0.75, -groesse * 0.22);
+    stift.lineTo(-groesse * 0.75, groesse * 0.22);
+    stift.closePath();
+    stift.fill();
+    stift.fillStyle = 'rgba(4, 16, 31, 0.55)';
+    stift.beginPath();
+    stift.arc(groesse * 0.22, -groesse * 0.05, groesse * 0.06, 0, Math.PI * 2);
+    stift.fill();
     stift.restore();
   }
 
-  /** Zeichnet einen Bewohner: eigene Kreaturform, falls vorhanden, sonst Emoji-Fallback. */
+  /** Zeichnet einen Bewohner: eigene Kreaturform, falls vorhanden, sonst ein einfacher Silhouetten-Fisch. */
   function zeichneBewohnerform(b, x, y, deckkraft, zeit) {
     if (!kennstKreatur(b.modulId)) {
-      zeichneSymbol(b.symbol, x, y, b.groesse, b.richtung, deckkraft);
+      zeichneVektorFisch(x, y, b.groesse, b.richtung, deckkraft, b.farbe);
       return;
     }
     stift.save();
@@ -270,7 +282,7 @@ export function starteHintergrund(leinwand, holeTiefe, holeModule = () => ({})) 
       if (f.richtung > 0 && f.x - f.groesse > breite) Object.assign(f, neuerAmbientFisch());
       else if (f.richtung < 0 && f.x + f.groesse < 0) Object.assign(f, neuerAmbientFisch());
       const y = f.y + Math.sin(f.wellen) * 4;
-      zeichneSymbol('🐟', f.x, y, f.groesse, f.richtung, f.deckkraft);
+      zeichneVektorFisch(f.x, y, f.groesse, f.richtung, f.deckkraft);
     }
   }
 

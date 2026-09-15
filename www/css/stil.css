@@ -28,6 +28,27 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Handgezeichnete Icons statt Emoji (siehe js/symbole.js) - skalieren mit der
+   Schriftgröße ihres Platzhalters, genau wie das Emoji-Zeichen davor. */
+.symbol-svg {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+.fund-symbol-inline {
+  display: inline-flex;
+  color: var(--perle);
+}
+
+.fund-symbol-inline .symbol-svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
 /*
  * Wichtig: Eine eigene display-Regel schlägt das hidden-Attribut des Browsers.
  * Ohne diese Zeile bleiben Dialoge unsichtbar liegen und fangen trotzdem

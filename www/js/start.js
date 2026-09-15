@@ -23,6 +23,14 @@ import {
   fuelleMenue,
 } from './ui.js';
 import { zahl, ganzzahl, dauer } from './zahlen.js';
+import { symbolMarkup } from './symbole.js';
+
+// Statische Icon-Platzhalter (Menü, Reiterleiste, Umschalter, Marianengraben-
+// Dialog, …) einmalig mit ihrem gezeichneten Symbol füllen - alles andere
+// wird laufend bei jedem `oberflaeche.aktualisiere()` neu gesetzt.
+for (const el of document.querySelectorAll('[data-symbol]')) {
+  el.innerHTML = symbolMarkup(el.dataset.symbol);
+}
 
 const SPEICHER_ABSTAND_MS = 15_000;
 const ANZEIGE_ABSTAND_MS = 100;
@@ -369,7 +377,7 @@ function pruefeFortschritt() {
       levelMeilensteinWarteschlange.push(e);
     } else {
       klang.levelAuf();
-      oberflaeche.melde(`⭐ Level ${e.level} erreicht! +${zahl(e.bl)} BL, +1 Skillpunkt`);
+      oberflaeche.melde(`Level ${e.level} erreicht! +${zahl(e.bl)} BL, +1 Skillpunkt`);
     }
   }
 
@@ -591,7 +599,7 @@ gluecksfischEl.addEventListener('pointerdown', (ereignis) => {
   const x = ereignis.clientX;
   const y = ereignis.clientY;
 
-  oberflaeche.schwebetext(x, y, '⚡ Boost', { kritisch: true }); // die Funktion hängt „ !“ automatisch an
+  oberflaeche.schwebetext(x, y, 'Boost', { kritisch: true }); // die Funktion hängt „ !“ automatisch an
   oberflaeche.pulsGuthaben(true);
   funken.kritischerStoss(x, y);
   klang.fischGefangen();

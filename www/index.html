@@ -22,19 +22,19 @@
       <span class="tiefe-wert" id="tiefe-wert">0</span><span class="tiefe-einheit">m</span>
     </div>
     <div class="zone" id="zone-name">Lichtzone</div>
-    <button class="knopf-klein" id="knopf-menue" aria-label="Menü öffnen" aria-haspopup="dialog">☰</button>
+    <button class="knopf-klein" id="knopf-menue" aria-label="Menü öffnen" aria-haspopup="dialog"><span data-symbol="menue" aria-hidden="true"></span></button>
   </div>
   <div class="level-leiste" id="level-leiste" title="Level – wächst mit der gesamten Ausbeute">
     <span class="level-abzeichen" id="level-abzeichen">Lvl 0</span>
     <div class="level-balken-aussen"><div class="level-balken-innen" id="level-balken"></div></div>
   </div>
   <div class="perlen-leiste" id="perlen-leiste" hidden>
-    <span aria-hidden="true">🫧</span>
+    <span data-symbol="blase" aria-hidden="true"></span>
     <span id="perlen-anzahl">0</span> Perlen
     <span class="perlen-bonus" id="perlen-bonus">+0 %</span>
   </div>
   <button class="tagestruhe-banner" id="tagestruhe-banner" hidden>
-    <span aria-hidden="true">🎁</span>
+    <span data-symbol="truhe" aria-hidden="true"></span>
     <span>Tages-Truhe abholen!</span>
     <span class="tagestruhe-streak" id="tagestruhe-streak" hidden></span>
   </button>
@@ -71,20 +71,20 @@
   <!-- Treibt selten vorbei; verschwindet nach ein paar Sekunden von allein
        wieder, wenn niemand antippt. Position und Bewegung setzt start.js. -->
   <button class="leuchtblase" id="leuchtblase" hidden aria-label="Leuchtblase einsammeln – lohnt sich!">
-    <span class="leuchtblase-kern" aria-hidden="true">✨</span>
+    <span class="leuchtblase-kern" data-symbol="glitzer" aria-hidden="true"></span>
   </button>
 
   <!-- Schwimmt selten und schnell quer durchs Bild; fängt man ihn, gibt es
        einen zeitlich begrenzten Produktionsboost. Bewegung setzt start.js. -->
   <button class="gluecksfisch" id="gluecksfisch" hidden aria-label="Glücksfisch fangen – gibt einen Boost">
-    <span class="gluecksfisch-kern" aria-hidden="true">🐠</span>
+    <span class="gluecksfisch-kern" data-symbol="fisch" aria-hidden="true"></span>
   </button>
 
   <!-- Treibt sehr selten vorbei; enthält eine Kiste mit Ausrüstung. Wie
        Leuchtblase/Glücksfisch bewusst langsam und lange sichtbar, damit auch
        ungeübte oder kleine Hände sie gut treffen können. Bewegung setzt start.js. -->
   <button class="treibende-kiste" id="treibende-kiste" hidden aria-label="Treibgut einsammeln – eine Kiste!">
-    <span class="treibende-kiste-kern" aria-hidden="true">🎁</span>
+    <span class="treibende-kiste-kern" data-symbol="kiste" aria-hidden="true"></span>
   </button>
 
   <!-- Erscheint mittig, sobald ein Erfolg freigeschaltet wird, und schwimmt
@@ -93,12 +93,12 @@
        sich anfassen lassen, nicht nur als Textmeldung vorbeiziehen. -->
   <button class="erfolgs-kiste" id="erfolgs-kiste" hidden aria-label="Erfolgs-Kiste einsammeln">
     <span class="erfolgs-kiste-schwimmer">
-      <span class="erfolgs-kiste-kern" id="erfolgs-kiste-kern" aria-hidden="true">🏆</span>
+      <span class="erfolgs-kiste-kern" id="erfolgs-kiste-kern" data-symbol="pokal" aria-hidden="true"></span>
     </span>
   </button>
 
   <div class="boost-anzeige" id="boost-anzeige" hidden>
-    <span aria-hidden="true">⚡</span> Doppelte Ausbeute · <span id="boost-zeit">0:00</span>
+    <span data-symbol="blitzriss" aria-hidden="true"></span> Doppelte Ausbeute · <span id="boost-zeit">0:00</span>
   </div>
 
   <div class="schwebetexte" id="schwebetexte" aria-hidden="true"></div>
@@ -108,23 +108,23 @@
 <!-- Reiter -->
 <nav class="reiter" id="reiter" role="tablist" aria-label="Bereiche">
   <button role="tab" id="reiter-module" aria-selected="true" aria-controls="tafel-module">
-    <span aria-hidden="true">🔧</span><span class="reiter-text">Module</span>
+    <span data-symbol="wrench" aria-hidden="true"></span><span class="reiter-text">Module</span>
     <span class="punkt" id="punkt-module" hidden></span>
   </button>
   <button role="tab" id="reiter-verbesserungen" aria-selected="false" aria-controls="tafel-verbesserungen">
-    <span aria-hidden="true">⭐</span><span class="reiter-text">Ausbau</span>
+    <span data-symbol="stern" aria-hidden="true"></span><span class="reiter-text">Ausbau</span>
     <span class="punkt" id="punkt-verbesserungen" hidden></span>
   </button>
   <button role="tab" id="reiter-logbuch" aria-selected="false" aria-controls="tafel-logbuch">
-    <span aria-hidden="true">📖</span><span class="reiter-text">Logbuch</span>
+    <span data-symbol="buch" aria-hidden="true"></span><span class="reiter-text">Logbuch</span>
     <span class="punkt" id="punkt-logbuch" hidden></span>
   </button>
   <button role="tab" id="reiter-expedition" aria-selected="false" aria-controls="tafel-expedition">
-    <span aria-hidden="true">🎣</span><span class="reiter-text">Expedition</span>
+    <span data-symbol="angel" aria-hidden="true"></span><span class="reiter-text">Expedition</span>
     <span class="punkt" id="punkt-expedition" hidden></span>
   </button>
   <button role="tab" id="reiter-aufstieg" aria-selected="false" aria-controls="tafel-aufstieg">
-    <span aria-hidden="true">🫧</span><span class="reiter-text">Auftauchen</span>
+    <span data-symbol="blase" aria-hidden="true"></span><span class="reiter-text">Auftauchen</span>
     <span class="punkt" id="punkt-aufstieg" hidden></span>
   </button>
 </nav>
@@ -175,14 +175,14 @@
       <span class="expedition-aktiv-name" id="expedition-aktiv-name"></span>
     </div>
     <div class="expedition-karte" id="expedition-karte">
-      <span class="expedition-karte-basis" aria-hidden="true">🏠</span>
+      <span class="expedition-karte-basis" data-symbol="haus" aria-hidden="true"></span>
       <div class="expedition-karte-linie">
-        <span class="expedition-karte-schiff" id="expedition-karte-schiff" aria-hidden="true">🚣</span>
+        <span class="expedition-karte-schiff" id="expedition-karte-schiff" aria-hidden="true"></span>
       </div>
-      <span class="expedition-karte-ziel" aria-hidden="true">📍</span>
+      <span class="expedition-karte-ziel" data-symbol="pin" aria-hidden="true"></span>
     </div>
     <button class="expedition-ereignis-banner" id="expedition-ereignis-banner" hidden>
-      <span id="expedition-ereignis-banner-symbol" aria-hidden="true">⚠️</span>
+      <span id="expedition-ereignis-banner-symbol" data-symbol="warnung" aria-hidden="true"></span>
       <span>Ereignis unterwegs – jetzt entscheiden!</span>
     </button>
     <div class="expedition-aktiv-zeit" id="expedition-aktiv-zeit"></div>
@@ -255,7 +255,7 @@
 
 <div class="overlay" id="overlay-entdeckung" hidden role="dialog" aria-modal="true" aria-labelledby="entdeckung-titel">
   <div class="dialog dialog-entdeckung">
-    <div class="entdeckung-symbol" id="entdeckung-symbol" aria-hidden="true">🐟</div>
+    <div class="entdeckung-symbol" id="entdeckung-symbol" aria-hidden="true"></div>
     <p class="entdeckung-tiefe" id="entdeckung-tiefe">In 5 m Tiefe</p>
     <h2 id="entdeckung-titel">Entdeckung</h2>
     <p class="entdeckung-text" id="entdeckung-text"></p>
@@ -268,7 +268,7 @@
   <div class="dialog dialog-entdeckung dialog-kiste" id="dialog-kiste">
     <div class="kiste-symbol-wrap">
       <span class="kiste-ring" id="kiste-ring" aria-hidden="true"></span>
-      <div class="entdeckung-symbol" id="kiste-symbol" aria-hidden="true">📦</div>
+      <div class="entdeckung-symbol" id="kiste-symbol" aria-hidden="true"></div>
     </div>
     <p class="entdeckung-tiefe" id="kiste-seltenheit"></p>
     <h2 id="kiste-titel">Kiste wird geöffnet …</h2>
@@ -279,7 +279,7 @@
 
 <div class="overlay" id="overlay-expedition" hidden role="dialog" aria-modal="true" aria-labelledby="expedition-erg-titel">
   <div class="dialog dialog-entdeckung">
-    <div class="entdeckung-symbol" id="expedition-erg-symbol" aria-hidden="true">🚣</div>
+    <div class="entdeckung-symbol" id="expedition-erg-symbol" aria-hidden="true"></div>
     <h2 id="expedition-erg-titel">Zurück von der Expedition</h2>
     <p class="entdeckung-bonus" id="expedition-erg-bl"></p>
     <p class="entdeckung-text" id="expedition-erg-fund"></p>
@@ -289,7 +289,7 @@
 
 <div class="overlay" id="overlay-expedition-ereignis" hidden role="dialog" aria-modal="true" aria-labelledby="expedition-ereignis-titel">
   <div class="dialog dialog-entdeckung">
-    <div class="entdeckung-symbol" id="expedition-ereignis-symbol" aria-hidden="true">🌊</div>
+    <div class="entdeckung-symbol" id="expedition-ereignis-symbol" aria-hidden="true"></div>
     <h2 id="expedition-ereignis-titel">Ereignis</h2>
     <p class="entdeckung-text" id="expedition-ereignis-text"></p>
     <p class="entdeckung-bonus" id="expedition-ereignis-kosten"></p>
@@ -302,7 +302,7 @@
 
 <div class="overlay" id="overlay-fisch" hidden role="dialog" aria-modal="true" aria-labelledby="fisch-titel">
   <div class="dialog dialog-entdeckung" id="dialog-fisch">
-    <div class="entdeckung-symbol" id="fisch-symbol" aria-hidden="true">🐠</div>
+    <div class="entdeckung-symbol" id="fisch-symbol" aria-hidden="true"></div>
     <p class="entdeckung-tiefe" id="fisch-seltenheit"></p>
     <h2 id="fisch-titel">Fisch</h2>
     <p class="entdeckung-text" id="fisch-text"></p>
@@ -313,7 +313,7 @@
 
 <div class="overlay" id="overlay-marianengraben" hidden role="dialog" aria-modal="true" aria-labelledby="marianengraben-titel">
   <div class="dialog dialog-marianengraben">
-    <div class="marianengraben-symbol" aria-hidden="true">🌊</div>
+    <div class="marianengraben-symbol" data-symbol="abgrund" aria-hidden="true"></div>
     <h2 id="marianengraben-titel">Der Marianengraben</h2>
     <p class="marianengraben-text">
       11.000 Meter unter der Oberfläche – tiefer geht es auf dieser Welt nirgendwo.
@@ -327,7 +327,7 @@
 
 <div class="overlay" id="overlay-level" hidden role="dialog" aria-modal="true" aria-labelledby="level-titel">
   <div class="dialog dialog-entdeckung" id="dialog-level">
-    <div class="entdeckung-symbol" id="level-symbol" aria-hidden="true">⭐</div>
+    <div class="entdeckung-symbol" id="level-symbol" aria-hidden="true"></div>
     <p class="entdeckung-tiefe" id="level-seltenheit"></p>
     <h2 id="level-titel">Level erreicht</h2>
     <p class="entdeckung-text" id="level-text"></p>
@@ -341,10 +341,10 @@
     <dl class="werte" id="menue-werte"></dl>
     <div class="schalter-reihe">
       <button class="schalter" id="schalter-ton" type="button" aria-pressed="true">
-        <span class="schalter-symbol" aria-hidden="true">🔊</span> Ton
+        <span class="schalter-symbol" data-symbol="ton" aria-hidden="true"></span> Ton
       </button>
       <button class="schalter" id="schalter-vibration" type="button" aria-pressed="true">
-        <span class="schalter-symbol" aria-hidden="true">📳</span> Vibration
+        <span class="schalter-symbol" data-symbol="vibration" aria-hidden="true"></span> Vibration
       </button>
     </div>
     <div class="menue-knoepfe">

@@ -9,7 +9,7 @@
  */
 // Version bei jeder Änderung an der Dateiliste anheben: Der Name selbst löst
 // die Umstellung aus – „activate“ löscht unten alles, was nicht mehr so heißt.
-const SPEICHER = 'tiefenrausch-v3';
+const SPEICHER = 'tiefenrausch-v4';
 
 const DATEIEN = [
   './',
@@ -26,6 +26,8 @@ const DATEIEN = [
   './js/funken.js',
   './js/klang.js',
   './js/monetarisierung.js',
+  './js/kreaturen.js',
+  './js/symbole.js',
   './bilder/symbol.svg',
   './bilder/icon-192.png',
   './bilder/icon-512.png',

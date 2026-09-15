@@ -34,6 +34,7 @@ import {
 } from '../www/js/daten.js';
 import { zusammenfuehren, alsText, ausText } from '../www/js/speicher.js';
 import { zahl, ganzzahl, dauer, uhr } from '../www/js/zahlen.js';
+import { BEKANNTE_SYMBOLE } from '../www/js/symbole.js';
 
 /** Liefert die übergebenen Werte der Reihe nach bei jedem Aufruf, danach
  *  immer wieder den letzten – für Funktionen, die mehrfach hintereinander
@@ -1942,4 +1943,55 @@ test('Speicher: skillpunkte wird als Zahl übernommen, garbage wird zu 0', () =>
   const vorlage = spiel.neuerZustand();
   assert.equal(zusammenfuehren(vorlage, { skillpunkte: 4 }).skillpunkte, 4);
   assert.equal(zusammenfuehren(vorlage, { skillpunkte: 'vier' }).skillpunkte, 0);
+});
+
+/* ------------------------------------------------------------------ */
+/* Symbole: keine Emoji mehr als Icon-Ersatz, jede ID existiert wirklich */
+/* ------------------------------------------------------------------ */
+
+test('Keine Emoji-Zeichen mehr als Symbol-Werte in den Spielinhalten', () => {
+  const emojiMuster = /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u;
+  const quellen = [
+    ...MODULE,
+    ...VERBESSERUNGEN,
+    ...ENTDECKUNGEN,
+    ...ERFOLGE,
+    ...ITEMS,
+    ...KISTEN_TYPEN,
+    ...EXPEDITIONEN,
+    ...EXPEDITIONS_EREIGNISSE,
+    ...AQUARIUM_FISCHE,
+    ...PERLEN_SHOP,
+    ...GLUECKSRAD_SEGMENTE,
+    ...SKILLBAUM,
+  ];
+  for (const eintrag of quellen) {
+    assert.ok(
+      typeof eintrag.symbol === 'string' && !emojiMuster.test(eintrag.symbol),
+      `Emoji statt Icon-ID bei "${eintrag.id ?? eintrag.name ?? eintrag.tiefe}": ${eintrag.symbol}`
+    );
+  }
+});
+
+test('Jede in den Spielinhalten verwendete Symbol-ID hat tatsächlich ein gezeichnetes Icon', () => {
+  const quellen = [
+    ...MODULE,
+    ...VERBESSERUNGEN,
+    ...ENTDECKUNGEN,
+    ...ERFOLGE,
+    ...ITEMS,
+    ...KISTEN_TYPEN,
+    ...EXPEDITIONEN,
+    ...EXPEDITIONS_EREIGNISSE,
+    ...AQUARIUM_FISCHE,
+    ...PERLEN_SHOP,
+    ...GLUECKSRAD_SEGMENTE,
+    ...SKILLBAUM,
+  ];
+  for (const eintrag of quellen) {
+    assert.ok(
+      BEKANNTE_SYMBOLE.has(eintrag.symbol),
+      `Unbekannte Symbol-ID bei "${eintrag.id ?? eintrag.name ?? eintrag.tiefe}": "${eintrag.symbol}" existiert nicht in symbole.js`
+    );
+  }
 });

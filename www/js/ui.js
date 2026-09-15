@@ -27,6 +27,7 @@ import {
 } from './daten.js';
 import * as spiel from './spiel.js';
 import { zahl, ganzzahl, dauer, uhr } from './zahlen.js';
+import { symbolMarkup } from './symbole.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -120,7 +121,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     const knopf = document.createElement('button');
     knopf.className = 'eintrag';
     knopf.innerHTML = `
-      <span class="eintrag-symbol" aria-hidden="true">${modul.symbol}</span>
+      <span class="eintrag-symbol" aria-hidden="true">${symbolMarkup(modul.symbol)}</span>
       <span class="eintrag-mitte">
         <span class="eintrag-name">${modul.name} <span class="eintrag-anzahl"></span></span>
         <span class="eintrag-info"></span>
@@ -193,7 +194,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     const knopf = document.createElement('button');
     knopf.className = 'eintrag';
     knopf.innerHTML = `
-      <span class="eintrag-symbol" aria-hidden="true">${v.symbol}</span>
+      <span class="eintrag-symbol" aria-hidden="true">${symbolMarkup(v.symbol)}</span>
       <span class="eintrag-mitte">
         <span class="eintrag-name">${v.name}</span>
         <span class="eintrag-info">${v.text}</span>
@@ -239,7 +240,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       const li = document.createElement('li');
       li.className = `eintrag ${bekannt ? '' : 'unbekannt'}`;
       li.innerHTML = `
-        <span class="eintrag-symbol" aria-hidden="true">${bekannt ? e.symbol : '❔'}</span>
+        <span class="eintrag-symbol" aria-hidden="true">${symbolMarkup(bekannt ? e.symbol : 'unbekannt')}</span>
         <span class="eintrag-mitte">
           <span class="eintrag-name">${bekannt ? e.name : 'Unbekannt'}
             <span class="eintrag-anzahl">${ganzzahl(e.tiefe)} m</span>
@@ -258,7 +259,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       li.className = `erfolg ${erreicht ? '' : 'offen'}`;
       li.title = e.text;
       li.innerHTML = `
-        <span class="erfolg-symbol" aria-hidden="true">${erreicht ? e.symbol : '🔒'}</span>
+        <span class="erfolg-symbol" aria-hidden="true">${symbolMarkup(erreicht ? e.symbol : 'schloss')}</span>
         <span class="erfolg-name">${erreicht ? e.name : e.text}</span>`;
       knoten.listeErfolge.appendChild(li);
     }
@@ -271,7 +272,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       li.className = `erfolg seltenheit-${f.seltenheit} ${gefangen ? '' : 'offen'}`;
       li.title = gefangen ? f.text : 'Auf Expeditionen zu finden.';
       const inhalt = `
-        <span class="erfolg-symbol" aria-hidden="true">${gefangen ? f.symbol : '❔'}</span>
+        <span class="erfolg-symbol" aria-hidden="true">${symbolMarkup(gefangen ? f.symbol : 'unbekannt')}</span>
         <span class="erfolg-name">${gefangen ? f.name : 'Unbekannt'}</span>`;
       // Gefangene Fische lassen sich antippen und zeigen ihre Details in
       // einem eigenen Dialog - unbekannte bleiben bewusst nicht interaktiv.
@@ -306,7 +307,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       const mitteWinkel = i * segWinkel + segWinkel / 2;
       const span = document.createElement('span');
       span.className = 'gluecksrad-symbol';
-      span.textContent = s.symbol;
+      span.innerHTML = symbolMarkup(s.symbol);
       span.style.transform =
         `translate(-50%, -50%) rotate(${mitteWinkel}deg) translate(0, -${radius}px) rotate(${-mitteWinkel}deg)`;
       knoten.gluecksrad.appendChild(span);
@@ -355,7 +356,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     const knopf = document.createElement('button');
     knopf.className = 'eintrag';
     knopf.innerHTML = `
-      <span class="eintrag-symbol" aria-hidden="true">${item.symbol}</span>
+      <span class="eintrag-symbol" aria-hidden="true">${symbolMarkup(item.symbol)}</span>
       <span class="eintrag-mitte">
         <span class="eintrag-name">${item.name}</span>
         <span class="eintrag-info">${item.text}</span>
@@ -391,7 +392,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     spalte.className = 'skillzweig';
     spalte.innerHTML = `
       <span class="skillzweig-kopf">
-        <span class="skillzweig-kopf-symbol" aria-hidden="true">${zweig.symbol}</span>
+        <span class="skillzweig-kopf-symbol" aria-hidden="true">${symbolMarkup(zweig.symbol)}</span>
         <span>${zweig.name}</span>
       </span>`;
     zweig.knoten.forEach((knotenDef, index) => {
@@ -404,7 +405,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       const knopf = document.createElement('button');
       knopf.className = 'skillknoten';
       knopf.innerHTML = `
-        <span class="skillknoten-symbol" aria-hidden="true">${zweig.symbol}</span>
+        <span class="skillknoten-symbol" aria-hidden="true">${symbolMarkup(zweig.symbol)}</span>
         <span class="skillknoten-name">${knotenDef.name}</span>
         <span class="skillknoten-kosten"></span>`;
       knopf.title = knotenDef.text;
@@ -439,7 +440,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     const knopf = document.createElement('button');
     knopf.className = 'eintrag';
     knopf.innerHTML = `
-      <span class="eintrag-symbol" aria-hidden="true">${k.symbol}</span>
+      <span class="eintrag-symbol" aria-hidden="true">${symbolMarkup(k.symbol)}</span>
       <span class="eintrag-mitte">
         <span class="eintrag-name">${k.name} <span class="eintrag-anzahl"></span></span>
         <span class="eintrag-info">Enthält Ausrüstung – seltener wird's mit besserer Kiste.</span>
@@ -467,7 +468,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     const knopf = document.createElement('button');
     knopf.className = e.kostenSekundenwert ? 'eintrag elite' : 'eintrag';
     knopf.innerHTML = `
-      <span class="eintrag-symbol" aria-hidden="true">${e.symbol}</span>
+      <span class="eintrag-symbol" aria-hidden="true">${symbolMarkup(e.symbol)}</span>
       <span class="eintrag-mitte">
         <span class="eintrag-name">${e.name}</span>
         <span class="eintrag-info">${e.text}</span>
@@ -519,7 +520,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       div.innerHTML = `
         <span class="ausruestung-slot-label">${slot === 'angel' ? 'Angel' : 'Köder'}</span>
         <span class="ausruestung-slot-symbol" aria-hidden="true">${
-          item ? item.symbol : slot === 'angel' ? '🎣' : '❔'
+          symbolMarkup(item ? item.symbol : slot === 'angel' ? 'angel' : 'unbekannt')
         }</span>
         <span class="ausruestung-slot-name">${item ? item.name : 'Keine ausgerüstet'}</span>`;
       knoten.ausruestungSlots.appendChild(div);
@@ -542,7 +543,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
         const knopf = document.createElement('button');
         knopf.className = `eintrag seltenheit-${item.seltenheit}`;
         knopf.innerHTML = `
-          <span class="eintrag-symbol" aria-hidden="true">${item.symbol}</span>
+          <span class="eintrag-symbol" aria-hidden="true">${symbolMarkup(item.symbol)}</span>
           <span class="eintrag-mitte">
             <span class="eintrag-name">${item.name}
               <span class="inventar-seltenheit">${SELTENHEITEN[item.seltenheit]?.label ?? ''}</span>
@@ -575,9 +576,9 @@ export function erzeugeOberflaeche(zustand, aktionen) {
 
     const def = findeExpedition(z.expedition.expeditionId);
     if (!def) return;
-    knoten.expeditionAktivSymbol.textContent = def.symbol;
+    knoten.expeditionAktivSymbol.innerHTML = symbolMarkup(def.symbol);
     knoten.expeditionAktivName.textContent = def.name;
-    knoten.expeditionKarteSchiff.textContent = def.symbol;
+    knoten.expeditionKarteSchiff.innerHTML = symbolMarkup(def.symbol);
 
     const gesamt = z.expedition.endZeit - z.expedition.startZeit;
     const rest = spiel.expeditionRestMs(z, jetzt);
@@ -599,7 +600,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     knoten.expeditionEreignisBanner.hidden = !ereignisBereit;
     if (ereignisBereit) {
       const ereignis = findeExpeditionsEreignis(z.expedition.ereignisId);
-      knoten.expeditionEreignisBannerSymbol.textContent = ereignis?.symbol ?? '⚠️';
+      knoten.expeditionEreignisBannerSymbol.innerHTML = symbolMarkup(ereignis?.symbol ?? 'warnung');
     }
   }
 
@@ -613,7 +614,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     knoten.tagestruheBanner.hidden = !verfuegbar;
     const streak = z.tagesStreak ?? 0;
     knoten.tagestruheStreak.hidden = streak < 2;
-    if (streak >= 2) knoten.tagestruheStreak.textContent = `🔥 ${streak}`;
+    if (streak >= 2) knoten.tagestruheStreak.innerHTML = `${symbolMarkup('flamme')}${streak}`;
   }
 
   knoten.tagestruheBanner.addEventListener('click', () => aktionen.hohleTagestruhe());
@@ -844,7 +845,7 @@ export function schliesseDialog(id) {
 }
 
 export function zeigeEntdeckung(entdeckung, beimSchliessen) {
-  $('entdeckung-symbol').textContent = entdeckung.symbol;
+  $('entdeckung-symbol').innerHTML = symbolMarkup(entdeckung.symbol);
   $('entdeckung-tiefe').textContent = `In ${ganzzahl(entdeckung.tiefe)} m Tiefe`;
   $('entdeckung-titel').textContent = entdeckung.name;
   $('entdeckung-text').textContent = entdeckung.text;
@@ -889,7 +890,7 @@ export function zeigeKiste(ergebnis, optionen = {}) {
   $('kiste-seltenheit').textContent = '';
   $('kiste-titel').textContent = 'Kiste wird geöffnet …';
   $('kiste-text').textContent = '';
-  symbolEl.textContent = ergebnis.kistenTyp?.symbol ?? '📦';
+  symbolEl.innerHTML = symbolMarkup(ergebnis.kistenTyp?.symbol ?? 'kiste');
   symbolEl.className = WENIGER_BEWEGUNG ? 'entdeckung-symbol' : 'entdeckung-symbol wackelt';
   ringEl.className = 'kiste-ring';
   $('kiste-ok').hidden = true;
@@ -897,7 +898,7 @@ export function zeigeKiste(ergebnis, optionen = {}) {
   zeigeDialog('overlay-kiste');
 
   const aufdecken = () => {
-    symbolEl.textContent = ergebnis.item ? ergebnis.item.symbol : ergebnis.kistenTyp?.symbol ?? '📦';
+    symbolEl.innerHTML = symbolMarkup(ergebnis.item ? ergebnis.item.symbol : ergebnis.kistenTyp?.symbol ?? 'kiste');
     symbolEl.className = WENIGER_BEWEGUNG ? 'entdeckung-symbol' : 'entdeckung-symbol geoeffnet';
     ringEl.className = WENIGER_BEWEGUNG ? 'kiste-ring' : 'kiste-ring aktiv';
     $('kiste-seltenheit').textContent = label;
@@ -925,7 +926,7 @@ export function zeigeKiste(ergebnis, optionen = {}) {
 export function zeigeAquariumFisch(fisch) {
   const dialog = $('dialog-fisch');
   dialog.className = `dialog dialog-entdeckung seltenheit-${fisch.seltenheit}`;
-  $('fisch-symbol').textContent = fisch.symbol;
+  $('fisch-symbol').innerHTML = symbolMarkup(fisch.symbol);
   $('fisch-seltenheit').textContent = SELTENHEITEN[fisch.seltenheit]?.label ?? fisch.seltenheit;
   $('fisch-titel').textContent = fisch.name;
   $('fisch-text').textContent = fisch.text;
@@ -944,7 +945,7 @@ export function zeigeLevelMeilenstein(ergebnis, beimSchliessen) {
   const dialog = $('dialog-level');
   const item = ergebnis.ausruestung;
   dialog.className = `dialog dialog-entdeckung ${item ? `seltenheit-${item.seltenheit}` : ''}`;
-  $('level-symbol').textContent = item ? item.symbol : '⭐';
+  $('level-symbol').innerHTML = symbolMarkup(item ? item.symbol : 'stern');
   $('level-seltenheit').textContent = item ? SELTENHEITEN[item.seltenheit]?.label ?? item.seltenheit : '';
   $('level-titel').textContent = `Level ${ergebnis.level} erreicht!`;
   $('level-text').textContent = item
@@ -959,21 +960,22 @@ export function zeigeLevelMeilenstein(ergebnis, beimSchliessen) {
 
 /** Zeigt, was eine abgeholte Expedition eingebracht hat. */
 export function zeigeExpeditionErgebnis(def, ergebnis, beimSchliessen) {
-  $('expedition-erg-symbol').textContent = def?.symbol ?? '🚣';
+  $('expedition-erg-symbol').innerHTML = symbolMarkup(def?.symbol ?? 'boot');
   $('expedition-erg-bl').textContent = `+${zahl(ergebnis.bl)} BL`;
 
+  const spanne = (klasse) => `<span class="fund-symbol-inline">${symbolMarkup(klasse)}</span>`;
   const teile = [];
   if (ergebnis.kiste) {
     const kistenTyp = KISTEN_TYPEN.find((k) => k.id === ergebnis.kiste);
-    teile.push(`eine ${kistenTyp?.name ?? 'Kiste'} ${kistenTyp?.symbol ?? '📦'}`);
+    teile.push(`eine ${kistenTyp?.name ?? 'Kiste'} ${spanne(kistenTyp?.symbol ?? 'kiste')}`);
   }
   if (ergebnis.fisch) {
-    teile.push(`„${ergebnis.fisch.name}“ ${ergebnis.fisch.symbol} fürs Aquarium`);
+    teile.push(`„${ergebnis.fisch.name}“ ${spanne(ergebnis.fisch.symbol)} fürs Aquarium`);
   }
   if (ergebnis.ausruestung) {
-    teile.push(`„${ergebnis.ausruestung.name}“ ${ergebnis.ausruestung.symbol} direkt gefunden`);
+    teile.push(`„${ergebnis.ausruestung.name}“ ${spanne(ergebnis.ausruestung.symbol)} direkt gefunden`);
   }
-  $('expedition-erg-fund').textContent =
+  $('expedition-erg-fund').innerHTML =
     teile.length > 0 ? `Außerdem dabei: ${teile.join(' und ')}.` : 'Diesmal ohne zusätzlichen Fund.';
 
   zeigeDialog('overlay-expedition');
@@ -990,7 +992,7 @@ export function zeigeExpeditionErgebnis(def, ergebnis, beimSchliessen) {
  * unverändert weiterlaufen.
  */
 export function zeigeExpeditionsEreignis(ereignis, zustand, beimEntscheidung) {
-  $('expedition-ereignis-symbol').textContent = ereignis.symbol;
+  $('expedition-ereignis-symbol').innerHTML = symbolMarkup(ereignis.symbol);
   $('expedition-ereignis-titel').textContent = ereignis.name;
   $('expedition-ereignis-text').textContent = ereignis.text;
 
