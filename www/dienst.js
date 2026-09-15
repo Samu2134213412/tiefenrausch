@@ -9,7 +9,7 @@
  */
 // Version bei jeder Änderung an der Dateiliste anheben: Der Name selbst löst
 // die Umstellung aus – „activate“ löscht unten alles, was nicht mehr so heißt.
-const SPEICHER = 'tiefenrausch-v4';
+const SPEICHER = 'tiefenrausch-v5';
 
 const DATEIEN = [
   './',

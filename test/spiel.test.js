@@ -1311,25 +1311,22 @@ test('Nächstes Ziel: fertige Expedition geht vor kaufbarem Modul', () => {
   assert.equal(ziel.art, 'expedition');
 });
 
-test('Nächstes Ziel: ohne Guthaben wird auf das günstigste Modul gespart', () => {
+test('Nächstes Ziel: kein Kaufvorschlag mehr, wenn nichts wirklich abholbereit ist (kein Guthaben)', () => {
   const z = spiel.neuerZustand();
   spiel.hohleTagestruhe(z, Date.now(), () => 0.01);
   spiel.dreheGluecksrad(z, Date.now(), () => 0.01);
   z.bl = 0;
-  const ziel = spiel.naechstesZiel(z, Date.now());
-  assert.equal(ziel.art, 'modul-sparen');
-  assert.equal(ziel.anteil, 0);
-  assert.ok(ziel.fehlt > 0);
+  assert.equal(spiel.naechstesZiel(z, Date.now()), null);
 });
 
-test('Nächstes Ziel: bezahlbares Modul wird als konkrete Handlung vorgeschlagen', () => {
+test('Nächstes Ziel: kein Kaufvorschlag mehr, selbst wenn jedes Modul bezahlbar wäre', () => {
+  // Genau das war die "Werbung": Leuchtqualle ist quasi immer bezahlbar,
+  // das durfte nicht mehr endlos als Ziel vorgeschlagen werden.
   const z = spiel.neuerZustand();
   spiel.hohleTagestruhe(z, Date.now(), () => 0.01);
   spiel.dreheGluecksrad(z, Date.now(), () => 0.01);
-  z.bl = spiel.modulPreis(z, MODULE[0].id, 1);
-  const ziel = spiel.naechstesZiel(z, Date.now());
-  assert.equal(ziel.art, 'modul-kaufbar');
-  assert.equal(ziel.modulId, MODULE[0].id);
+  z.bl = 1e12;
+  assert.equal(spiel.naechstesZiel(z, Date.now()), null);
 });
 
 /* ------------------------------------------------------------------ */

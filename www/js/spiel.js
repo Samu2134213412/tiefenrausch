@@ -1110,12 +1110,13 @@ export function hohleTagestruhe(zustand, jetzt = Date.now(), zufall = Math.rando
 /* ------------------------------------------------------------------ */
 
 /**
- * Statt aus vielen Listen selbst herauszusuchen, was als Nächstes sinnvoll
- * ist, zeigt diese Funktion immer genau EIN konkretes, kurzfristig
- * erreichbares Ziel – wichtig für Spielerinnen und Spieler, die von zu vielen
- * gleichzeitigen offenen Möglichkeiten eher überfordert als motiviert werden.
- * Priorität: Dinge, die JETZT sofort etwas bringen, kommen vor Dingen, auf
- * die man erst noch hinsparen muss.
+ * Statt aus vielen Listen selbst herauszusuchen, was gerade wartet, zeigt
+ * diese Funktion genau EIN konkretes, sofort abholbares Ereignis - Tages-
+ * Truhe, Glücksrad, eine ungeöffnete Kiste oder eine zurückgekehrte
+ * Expedition. Bewusst KEIN "kauf jetzt Modul X" mehr: Leuchtqualle & Co.
+ * sind quasi immer irgendwie bezahlbar, das führte zu einer Dauerschleife
+ * aus „Leuchtqualle kaufen!“, die sich wie Werbung anfühlte statt wie ein
+ * Hinweis. Wenn gerade nichts wartet, gibt es hier bewusst nichts zu zeigen.
  */
 export function naechstesZiel(zustand, jetzt = Date.now()) {
   if (tagestruheVerfuegbar(zustand, jetzt)) {
@@ -1130,28 +1131,7 @@ export function naechstesZiel(zustand, jetzt = Date.now()) {
   if (expeditionFertig(zustand, jetzt)) {
     return { art: 'expedition', text: 'Expedition ist zurück!' };
   }
-
-  for (const m of MODULE) {
-    const preis = modulPreis(zustand, m.id, 1);
-    if (zustand.bl >= preis) {
-      return { art: 'modul-kaufbar', text: `${m.symbol} ${m.name} kaufen!`, modulId: m.id };
-    }
-  }
-
-  let guenstigstes = null;
-  for (const m of MODULE) {
-    const preis = modulPreis(zustand, m.id, 1);
-    if (!guenstigstes || preis < guenstigstes.preis) guenstigstes = { modul: m, preis };
-  }
-  if (!guenstigstes) return null;
-
-  return {
-    art: 'modul-sparen',
-    text: `${guenstigstes.modul.symbol} ${guenstigstes.modul.name}`,
-    modulId: guenstigstes.modul.id,
-    anteil: Math.max(0, Math.min(1, zustand.bl / guenstigstes.preis)),
-    fehlt: Math.max(0, guenstigstes.preis - zustand.bl),
-  };
+  return null;
 }
 
 /* ------------------------------------------------------------------ */

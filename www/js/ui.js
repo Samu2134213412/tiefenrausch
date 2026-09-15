@@ -103,8 +103,6 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     expeditionKeineAngel: $('expedition-keine-angel'),
     zielChip: $('ziel-chip'),
     zielText: $('ziel-text'),
-    zielLeisteWrap: $('ziel-leiste-wrap'),
-    zielLeiste: $('ziel-leiste'),
     tagestruheBanner: $('tagestruhe-banner'),
     tagestruheStreak: $('tagestruhe-streak'),
   };
@@ -625,7 +623,6 @@ export function erzeugeOberflaeche(zustand, aktionen) {
    * springt zum passenden Bereich bzw. löst die Tages-Truhe direkt aus. */
 
   let letztesZielArt = null;
-  const ZIEL_SOFORT = new Set(['tagestruhe', 'kiste', 'expedition', 'modul-kaufbar']);
 
   function aktualisiereZielChip(z, jetzt) {
     const ziel = spiel.naechstesZiel(z, jetzt);
@@ -634,17 +631,12 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     if (!ziel) return;
 
     knoten.zielText.textContent = ziel.text;
-    knoten.zielChip.classList.toggle('bereit', ZIEL_SOFORT.has(ziel.art));
-
-    const zeigeLeiste = ziel.art === 'modul-sparen';
-    knoten.zielLeisteWrap.hidden = !zeigeLeiste;
-    if (zeigeLeiste) knoten.zielLeiste.style.transform = `scaleX(${ziel.anteil})`;
+    knoten.zielChip.classList.add('bereit');
   }
 
   knoten.zielChip.addEventListener('click', () => {
     if (letztesZielArt === 'tagestruhe') aktionen.hohleTagestruhe();
     else if (letztesZielArt === 'kiste' || letztesZielArt === 'expedition') waehleReiter('reiter-expedition');
-    else if (letztesZielArt === 'modul-kaufbar' || letztesZielArt === 'modul-sparen') waehleReiter('reiter-module');
   });
 
   /* ---------------- Kopfzeile ---------------- */
