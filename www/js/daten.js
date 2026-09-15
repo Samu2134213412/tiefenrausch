@@ -362,6 +362,13 @@ export function findeKistenTyp(id) {
  * Spielphase spuerbar bleibt. `kistenChance` ist die Grundchance auf eine
  * Kiste der jeweils genannten Stufe; `fischChance` die Grundchance auf einen
  * neuen Aquarium-Fisch, bevor Angel/Koeder sie noch erhoehen.
+ *
+ * `kostenSekundenwert` (nur beim Wagnis) ist ein Eintrittspreis in BL, faellig
+ * beim Start statt bei der Ruckkehr - dieselbe "Sekunden Produktion"-Logik,
+ * nur in die andere Richtung. `ausruestungGewichte` ueberschreibt dort die
+ * globale Verteilung: das Wagnis liefert garantiert Ausruestung (Chance 1),
+ * und zwar mit deutlichem Uebergewicht auf episch/legendaer - das ultra gute
+ * Zeug soll an der teuersten, nicht der billigsten Station warten.
  */
 export const EXPEDITIONEN = [
   { id: 'kurz', name: 'Kurzer Streifzug', symbol: '🚣', dauerMs: 5 * 60 * 1000,
@@ -373,10 +380,37 @@ export const EXPEDITIONEN = [
   { id: 'lang', name: 'Tiefseeexpedition', symbol: '🚤', dauerMs: 3 * 60 * 60 * 1000,
     blSekundenwert: 200, kistenTyp: 'gold', kistenChance: 0.6, fischChance: 0.35, ausruestungChance: 0.22,
     text: 'Stunden, in denen niemand weiß, wie tief die Angel wirklich hängt.' },
+  { id: 'wagnis', name: 'Wagnis in den Abgrund', symbol: '🌑', dauerMs: 8 * 60 * 60 * 1000,
+    kostenSekundenwert: 6000, blSekundenwert: 260, kistenTyp: 'gold', kistenChance: 0.7, fischChance: 0.45,
+    ausruestungChance: 1, ausruestungGewichte: { gewoehnlich: 0, selten: 5, episch: 45, legendaer: 50 },
+    text: 'Teuer, lang und ohne Garantie auf Rückkehr zur gewohnten Zeit – aber unten wartet das beste Gerät.' },
 ];
 
 export function findeExpedition(id) {
   return EXPEDITIONEN.find((e) => e.id === id) ?? null;
+}
+
+/**
+ * Zufaellige Ereignisse, die waehrend einer laufenden Expedition auftreten
+ * koennen - echte Entscheidungen statt nur Warten. `kostenArt` ist entweder
+ * 'bl' (bezahlt aus der aktuellen Produktion, wie ueberall sonst) oder
+ * 'koeder' (der ausgeruestete Koeder wird geopfert - verbraucht, nicht nur
+ * abgelegt). Wer bezahlt, bekommt `wirkung`; wer ablehnt, faehrt normal
+ * weiter, ganz ohne Nachteil.
+ */
+export const EXPEDITIONS_EREIGNISSE = [
+  { id: 'sturm', symbol: '🌊', name: 'Sturm zieht auf',
+    text: 'Ein Sturm treibt das Boot ab. Mit voller Kraft dagegenhalten kostet Biolumineszenz, bringt euch aber deutlich schneller zurück.',
+    kostenArt: 'bl', kostenSekundenwert: 150,
+    wirkung: { art: 'zeitReduktion', wert: 0.4 } },
+  { id: 'strudel', symbol: '🌀', name: 'Strudel in der Tiefe',
+    text: 'Ein Strudel wirbelt etwas Glänzendes nach oben. Opfert ihr den Köder dafür, steigen die Fundchancen für den Rest der Fahrt kräftig.',
+    kostenArt: 'koeder',
+    wirkung: { art: 'fundChanceBonus', wert: 0.3 } },
+];
+
+export function findeExpeditionsEreignis(id) {
+  return EXPEDITIONS_EREIGNISSE.find((e) => e.id === id) ?? null;
 }
 
 /**

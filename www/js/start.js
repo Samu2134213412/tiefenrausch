@@ -5,7 +5,7 @@ import * as spiel from './spiel.js';
 import * as speicher from './speicher.js';
 import * as monetarisierung from './monetarisierung.js';
 import * as klang from './klang.js';
-import { findeExpedition } from './daten.js';
+import { findeExpedition, findeExpeditionsEreignis } from './daten.js';
 import { starteHintergrund } from './hintergrund.js';
 import { starteFunken } from './funken.js';
 import {
@@ -16,6 +16,7 @@ import {
   zeigeWillkommen,
   zeigeKiste,
   zeigeExpeditionErgebnis,
+  zeigeExpeditionsEreignis,
   spinneGluecksrad,
   zeigeMarianengraben,
   zeigeLevelMeilenstein,
@@ -196,18 +197,40 @@ const oberflaeche = erzeugeOberflaeche(zustand, {
   starteExpedition(id) {
     const ergebnis = spiel.starteExpedition(zustand, id);
     if (!ergebnis.erfolg) {
-      oberflaeche.melde(
-        ergebnis.grund === 'keine Angel ausgerüstet'
-          ? 'Rüste zuerst eine Angel aus.'
-          : 'Expedition kann jetzt nicht gestartet werden.'
-      );
+      const texte = {
+        'keine Angel ausgerüstet': 'Rüste zuerst eine Angel aus.',
+        'zu wenig Biolumineszenz': 'Dafür reicht die Biolumineszenz nicht.',
+      };
+      oberflaeche.melde(texte[ergebnis.grund] ?? 'Expedition kann jetzt nicht gestartet werden.');
       return;
     }
-    oberflaeche.melde('Expedition gestartet.');
+    oberflaeche.melde(ergebnis.kosten > 0 ? `Wagnis gestartet – ${zahl(ergebnis.kosten)} BL bezahlt.` : 'Expedition gestartet.');
     klang.kauf();
     vibriere(12);
     oberflaeche.aktualisiere(zustand);
     speicher.speichern(zustand);
+  },
+
+  oeffneExpeditionsEreignis() {
+    if (!spiel.expeditionsEreignisBereit(zustand)) return;
+    const ereignis = findeExpeditionsEreignis(zustand.expedition.ereignisId);
+    if (!ereignis) return;
+    zeigeExpeditionsEreignis(ereignis, zustand, (bezahlen) => {
+      const ergebnis = spiel.loeseExpeditionsEreignis(zustand, bezahlen);
+      if (!ergebnis.erfolg) {
+        oberflaeche.melde('Dafür reicht es gerade nicht.');
+        return;
+      }
+      if (ergebnis.bezahlt) {
+        klang.kauf();
+        vibriere(15);
+        oberflaeche.melde(
+          ereignis.wirkung.art === 'zeitReduktion' ? 'Mit voller Kraft durch – die Fahrt ist jetzt kürzer.' : 'Der Köder ist geopfert – die Fundchance steigt für den Rest der Fahrt.'
+        );
+      }
+      oberflaeche.aktualisiere(zustand);
+      speicher.speichern(zustand);
+    });
   },
 
   sammleExpedition() {

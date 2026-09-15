@@ -23,6 +23,8 @@ import {
   findeKistenTyp,
   EXPEDITIONEN,
   findeExpedition,
+  EXPEDITIONS_EREIGNISSE,
+  findeExpeditionsEreignis,
   AQUARIUM_FISCHE,
   findeAquariumFisch,
   gewichteteAuswahl,
@@ -893,12 +895,26 @@ export function pruefeLevelAufstieg(zustand, jetzt = Date.now(), zufall = Math.r
 /* Expeditionen: echte Wartezeit gegen Kisten und seltene Fische        */
 /* ------------------------------------------------------------------ */
 
+/** Chance, dass eine gestartete Expedition unterwegs ein Ereignis auslöst. */
+export const EXPEDITIONS_EREIGNIS_CHANCE = 0.45;
+
+/** Fenster (Anteil der Fahrtzeit), in dem ein Ereignis ausgelöst werden kann –
+ *  nicht direkt am Start (noch nichts zu entscheiden) und nicht ganz am Ende
+ *  (keine Zeit mehr, wirklich zu reagieren). */
+const EXPEDITIONS_EREIGNIS_FENSTER = [0.25, 0.75];
+
 /** Ohne ausgerüstete Angel gibt es nichts, das man aussetzen könnte. */
-export function starteExpedition(zustand, expeditionId, jetzt = Date.now()) {
+export function starteExpedition(zustand, expeditionId, jetzt = Date.now(), zufall = Math.random) {
   if (!hatAngel(zustand)) return { erfolg: false, grund: 'keine Angel ausgerüstet' };
   if (zustand.expedition) return { erfolg: false, grund: 'Expedition läuft bereits' };
   const def = findeExpedition(expeditionId);
   if (!def) return { erfolg: false, grund: 'unbekannte Expedition' };
+
+  // Das Wagnis verlangt einen Eintrittspreis, fällig beim Start statt erst
+  // bei der Rückkehr – „richtig viel bezahlen“ für die Chance auf das beste
+  // Gerät im Spiel.
+  const kosten = def.kostenSekundenwert ? def.kostenSekundenwert * produktionProSekunde(zustand, jetzt) : 0;
+  if (kosten > 0 && zustand.bl < kosten) return { erfolg: false, grund: 'zu wenig Biolumineszenz' };
 
   let expeditionsDauerFaktor = 1;
   for (const id of zustand.skillbaum ?? []) {
@@ -906,8 +922,27 @@ export function starteExpedition(zustand, expeditionId, jetzt = Date.now()) {
     if (knoten?.wirkung.art === 'expeditionsDauerFaktor') expeditionsDauerFaktor *= knoten.wirkung.wert;
   }
   const dauer = Math.max(1000, Math.round(def.dauerMs * angelZeitFaktor(zustand) * expeditionsDauerFaktor));
+
+  if (kosten > 0) zustand.bl -= kosten;
   zustand.expedition = { expeditionId, startZeit: jetzt, endZeit: jetzt + dauer };
-  return { erfolg: true, endZeit: zustand.expedition.endZeit };
+
+  // Manche Fahrten bekommen unterwegs ein Ereignis mit einer echten
+  // Entscheidung (bezahlen für einen Vorteil, oder risikofrei ablehnen).
+  // „Strudel“ braucht einen ausgerüsteten Köder, den es opfert – ohne Köder
+  // kommt dieses Ereignis erst gar nicht infrage.
+  const moeglicheEreignisse = EXPEDITIONS_EREIGNISSE.filter(
+    (e) => e.kostenArt !== 'koeder' || ausgeruestetesItem(zustand, 'koeder')
+  );
+  if (moeglicheEreignisse.length > 0 && zufall() < EXPEDITIONS_EREIGNIS_CHANCE) {
+    const ereignis = moeglicheEreignisse[Math.floor(zufall() * moeglicheEreignisse.length)];
+    const [minAnteil, maxAnteil] = EXPEDITIONS_EREIGNIS_FENSTER;
+    const anteil = minAnteil + zufall() * (maxAnteil - minAnteil);
+    zustand.expedition.ereignisId = ereignis.id;
+    zustand.expedition.ereignisZeit = jetzt + Math.round(dauer * anteil);
+    zustand.expedition.ereignisGeloest = false;
+  }
+
+  return { erfolg: true, endZeit: zustand.expedition.endZeit, kosten };
 }
 
 export function expeditionFertig(zustand, jetzt = Date.now()) {
@@ -918,6 +953,55 @@ export function expeditionFertig(zustand, jetzt = Date.now()) {
 export function expeditionRestMs(zustand, jetzt = Date.now()) {
   if (!zustand.expedition) return 0;
   return Math.max(0, zustand.expedition.endZeit - jetzt);
+}
+
+/** Steht gerade ein Expeditions-Ereignis zur Entscheidung an? */
+export function expeditionsEreignisBereit(zustand, jetzt = Date.now()) {
+  return Boolean(
+    zustand.expedition &&
+      zustand.expedition.ereignisId &&
+      !zustand.expedition.ereignisGeloest &&
+      jetzt >= zustand.expedition.ereignisZeit
+  );
+}
+
+/**
+ * Entscheidet ein bereitstehendes Expeditions-Ereignis. `bezahlen = true`
+ * zahlt den Preis (BL oder den ausgerüsteten Köder, der dabei verbraucht
+ * wird) und wendet die Wirkung sofort auf die laufende Fahrt an; ablehnen
+ * kostet nichts, bringt aber auch keinen Vorteil – die Fahrt läuft normal
+ * weiter.
+ */
+export function loeseExpeditionsEreignis(zustand, bezahlen, jetzt = Date.now()) {
+  if (!expeditionsEreignisBereit(zustand, jetzt)) return { erfolg: false, grund: 'kein Ereignis bereit' };
+  const ereignis = findeExpeditionsEreignis(zustand.expedition.ereignisId);
+  if (!ereignis) return { erfolg: false, grund: 'unbekanntes Ereignis' };
+
+  if (!bezahlen) {
+    zustand.expedition.ereignisGeloest = true;
+    return { erfolg: true, ereignis, bezahlt: false };
+  }
+
+  if (ereignis.kostenArt === 'bl') {
+    const preis = ereignis.kostenSekundenwert * produktionProSekunde(zustand, jetzt);
+    if (zustand.bl < preis) return { erfolg: false, grund: 'zu wenig Biolumineszenz' };
+    zustand.bl -= preis;
+  } else if (ereignis.kostenArt === 'koeder') {
+    const koederId = zustand.ausruestung.koeder;
+    if (!koederId) return { erfolg: false, grund: 'kein Köder ausgerüstet' };
+    zustand.ausruestung.koeder = null;
+    zustand.besitzItems = zustand.besitzItems.filter((id) => id !== koederId);
+  }
+
+  if (ereignis.wirkung.art === 'zeitReduktion') {
+    const rest = Math.max(0, zustand.expedition.endZeit - jetzt);
+    zustand.expedition.endZeit = jetzt + Math.round(rest * (1 - ereignis.wirkung.wert));
+  } else if (ereignis.wirkung.art === 'fundChanceBonus') {
+    zustand.expedition.bonusFundChance = (zustand.expedition.bonusFundChance ?? 0) + ereignis.wirkung.wert;
+  }
+
+  zustand.expedition.ereignisGeloest = true;
+  return { erfolg: true, ereignis, bezahlt: true };
 }
 
 /**
@@ -931,6 +1015,7 @@ export function sammleExpedition(zustand, jetzt = Date.now(), zufall = Math.rand
   if (!expeditionFertig(zustand, jetzt)) return { erfolg: false, grund: 'noch nicht fertig' };
 
   const def = findeExpedition(zustand.expedition.expeditionId);
+  const ereignisFundBonus = zustand.expedition.bonusFundChance ?? 0;
   zustand.expedition = null;
   zustand.expeditionenAbgeschlossen = (zustand.expeditionenAbgeschlossen ?? 0) + 1;
   if (!def) return { erfolg: false, grund: 'unbekannte Expedition' };
@@ -941,7 +1026,8 @@ export function sammleExpedition(zustand, jetzt = Date.now(), zufall = Math.rand
   const bl = Math.max(basis, mindestens) * koederBlFaktor(zustand);
   gutschreiben(zustand, bl);
 
-  const fundBonus = angelFundChance(zustand) + koederFundBonus(zustand) + dauerhafteBonusSumme(zustand, 'fundChanceBonus');
+  const fundBonus =
+    angelFundChance(zustand) + koederFundBonus(zustand) + dauerhafteBonusSumme(zustand, 'fundChanceBonus') + ereignisFundBonus;
 
   let kiste = null;
   if (zufall() < def.kistenChance + fundBonus) {
@@ -960,10 +1046,12 @@ export function sammleExpedition(zustand, jetzt = Date.now(), zufall = Math.rand
   }
 
   // Zweiter, direkterer Weg zu Angel/Köder als über eine erst noch zu
-  // öffnende Kiste – vor allem auf längeren Expeditionen spürbar.
+  // öffnende Kiste – vor allem auf längeren Expeditionen spürbar. Das
+  // Wagnis überschreibt die Gewichte mit einer, die klar auf episch/legendär
+  // setzt – das ultra gute Gerät soll an der teuersten Station warten.
   let ausruestung = null;
   if (zufall() < (def.ausruestungChance ?? 0) + fundBonus) {
-    ausruestung = wuerfleAusruestungMitGewichten(zustand, EXPEDITIONS_AUSRUESTUNG_GEWICHTE, zufall);
+    ausruestung = wuerfleAusruestungMitGewichten(zustand, def.ausruestungGewichte ?? EXPEDITIONS_AUSRUESTUNG_GEWICHTE, zufall);
   }
 
   return { erfolg: true, bl, kiste, fisch, ausruestung };

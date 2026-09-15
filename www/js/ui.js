@@ -17,6 +17,7 @@ import {
   KISTEN_TYPEN,
   EXPEDITIONEN,
   findeExpedition,
+  findeExpeditionsEreignis,
   AQUARIUM_FISCHE,
   SELTENHEITEN,
   PERLEN_SHOP,
@@ -95,6 +96,8 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     expeditionKarteSchiff: $('expedition-karte-schiff'),
     expeditionAktivZeit: $('expedition-aktiv-zeit'),
     knopfExpeditionAbholen: $('knopf-expedition-abholen'),
+    expeditionEreignisBanner: $('expedition-ereignis-banner'),
+    expeditionEreignisBannerSymbol: $('expedition-ereignis-banner-symbol'),
     listeExpeditionen: $('liste-expeditionen'),
     expeditionKeineAngel: $('expedition-keine-angel'),
     zielChip: $('ziel-chip'),
@@ -462,7 +465,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
   for (const e of EXPEDITIONEN) {
     const li = document.createElement('li');
     const knopf = document.createElement('button');
-    knopf.className = 'eintrag';
+    knopf.className = e.kostenSekundenwert ? 'eintrag elite' : 'eintrag';
     knopf.innerHTML = `
       <span class="eintrag-symbol" aria-hidden="true">${e.symbol}</span>
       <span class="eintrag-mitte">
@@ -471,18 +474,39 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       </span>
       <span class="eintrag-preis">
         <span class="preis-wert"></span>
-        <span class="preis-menge">Start</span>
+        <span class="preis-menge"></span>
       </span>`;
     knopf.addEventListener('click', () => aktionen.starteExpedition(e.id));
     li.appendChild(knopf);
     knoten.listeExpeditionen.appendChild(li);
-    expeditionZeilen.set(e.id, { li, knopf, dauerText: knopf.querySelector('.preis-wert') });
+    expeditionZeilen.set(e.id, {
+      li,
+      knopf,
+      wert: knopf.querySelector('.preis-wert'),
+      menge: knopf.querySelector('.preis-menge'),
+    });
   }
 
   function aktualisiereExpeditionsliste(z) {
     const faktor = spiel.angelZeitFaktor(z);
     for (const e of EXPEDITIONEN) {
-      expeditionZeilen.get(e.id).dauerText.textContent = dauer((e.dauerMs * faktor) / 1000);
+      const zeile = expeditionZeilen.get(e.id);
+      const dauerText = dauer((e.dauerMs * faktor) / 1000);
+      // Das Wagnis kostet BL beim Start – der Preis ist die wichtigste
+      // Information und bekommt deshalb den hervorgehobenen Platz, die
+      // Dauer rutscht auf die kleinere Zeile darunter.
+      if (e.kostenSekundenwert) {
+        const kosten = e.kostenSekundenwert * spiel.produktionProSekunde(z);
+        const bezahlbar = z.bl >= kosten;
+        zeile.wert.textContent = `${zahl(kosten)} BL`;
+        zeile.menge.textContent = dauerText;
+        zeile.knopf.classList.toggle('kaufbar', bezahlbar);
+        zeile.knopf.classList.toggle('gesperrt', !bezahlbar);
+        zeile.knopf.disabled = !bezahlbar;
+      } else {
+        zeile.wert.textContent = dauerText;
+        zeile.menge.textContent = 'Start';
+      }
     }
   }
 
@@ -570,9 +594,17 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     knoten.expeditionAktivZeit.textContent = fertig ? 'Zurück von der Expedition!' : `Noch ${dauer(rest / 1000)}`;
     knoten.knopfExpeditionAbholen.disabled = !fertig;
     knoten.knopfExpeditionAbholen.textContent = fertig ? 'Abholen' : 'Noch unterwegs …';
+
+    const ereignisBereit = spiel.expeditionsEreignisBereit(z, jetzt);
+    knoten.expeditionEreignisBanner.hidden = !ereignisBereit;
+    if (ereignisBereit) {
+      const ereignis = findeExpeditionsEreignis(z.expedition.ereignisId);
+      knoten.expeditionEreignisBannerSymbol.textContent = ereignis?.symbol ?? '⚠️';
+    }
   }
 
   knoten.knopfExpeditionAbholen.addEventListener('click', () => aktionen.sammleExpedition());
+  knoten.expeditionEreignisBanner.addEventListener('click', () => aktionen.oeffneExpeditionsEreignis());
 
   /* ---------------- Tages-Truhe ---------------- */
 
@@ -948,6 +980,43 @@ export function zeigeExpeditionErgebnis(def, ergebnis, beimSchliessen) {
   $('expedition-erg-ok').onclick = () => {
     schliesseDialog('overlay-expedition');
     beimSchliessen?.();
+  };
+}
+
+/**
+ * Zeigt ein Ereignis, das während einer laufenden Expedition auftritt: eine
+ * echte Entscheidung, kein reiner Hinweis. Bezahlen (BL oder der geopferte
+ * Köder) wendet die Wirkung an, Ablehnen kostet nichts und lässt die Fahrt
+ * unverändert weiterlaufen.
+ */
+export function zeigeExpeditionsEreignis(ereignis, zustand, beimEntscheidung) {
+  $('expedition-ereignis-symbol').textContent = ereignis.symbol;
+  $('expedition-ereignis-titel').textContent = ereignis.name;
+  $('expedition-ereignis-text').textContent = ereignis.text;
+
+  const bezahlenKnopf = $('expedition-ereignis-bezahlen');
+  if (ereignis.kostenArt === 'bl') {
+    const preis = ereignis.kostenSekundenwert * spiel.produktionProSekunde(zustand);
+    $('expedition-ereignis-kosten').textContent = `Kostet ${zahl(preis)} BL`;
+    bezahlenKnopf.textContent = 'Bezahlen';
+    bezahlenKnopf.disabled = zustand.bl < preis;
+  } else {
+    const koeder = findeItem(zustand.ausruestung.koeder);
+    $('expedition-ereignis-kosten').textContent = koeder
+      ? `Opfert den ausgerüsteten Köder „${koeder.name}“`
+      : 'Kein Köder ausgerüstet';
+    bezahlenKnopf.textContent = 'Köder opfern';
+    bezahlenKnopf.disabled = !koeder;
+  }
+
+  zeigeDialog('overlay-expedition-ereignis');
+  $('expedition-ereignis-ablehnen').onclick = () => {
+    schliesseDialog('overlay-expedition-ereignis');
+    beimEntscheidung(false);
+  };
+  bezahlenKnopf.onclick = () => {
+    schliesseDialog('overlay-expedition-ereignis');
+    beimEntscheidung(true);
   };
 }
 

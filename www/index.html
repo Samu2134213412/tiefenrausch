@@ -181,6 +181,10 @@
       </div>
       <span class="expedition-karte-ziel" aria-hidden="true">📍</span>
     </div>
+    <button class="expedition-ereignis-banner" id="expedition-ereignis-banner" hidden>
+      <span id="expedition-ereignis-banner-symbol" aria-hidden="true">⚠️</span>
+      <span>Ereignis unterwegs – jetzt entscheiden!</span>
+    </button>
     <div class="expedition-aktiv-zeit" id="expedition-aktiv-zeit"></div>
     <button class="knopf knopf-primaer" id="knopf-expedition-abholen" disabled>Noch unterwegs …</button>
   </div>
@@ -280,6 +284,19 @@
     <p class="entdeckung-bonus" id="expedition-erg-bl"></p>
     <p class="entdeckung-text" id="expedition-erg-fund"></p>
     <button class="knopf knopf-primaer" id="expedition-erg-ok">Klasse!</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-expedition-ereignis" hidden role="dialog" aria-modal="true" aria-labelledby="expedition-ereignis-titel">
+  <div class="dialog dialog-entdeckung">
+    <div class="entdeckung-symbol" id="expedition-ereignis-symbol" aria-hidden="true">🌊</div>
+    <h2 id="expedition-ereignis-titel">Ereignis</h2>
+    <p class="entdeckung-text" id="expedition-ereignis-text"></p>
+    <p class="entdeckung-bonus" id="expedition-ereignis-kosten"></p>
+    <div class="dialog-knoepfe">
+      <button class="knopf" id="expedition-ereignis-ablehnen">Ablehnen</button>
+      <button class="knopf knopf-primaer" id="expedition-ereignis-bezahlen"></button>
+    </div>
   </div>
 </div>
 

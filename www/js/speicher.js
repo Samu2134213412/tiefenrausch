@@ -18,6 +18,7 @@ import {
   findeItem,
   KISTEN_TYPEN,
   EXPEDITIONEN,
+  EXPEDITIONS_EREIGNISSE,
   AQUARIUM_FISCHE,
   PERLEN_SHOP,
   alleSkillknoten,
@@ -175,6 +176,18 @@ export function zusammenfuehren(vorlage, gelesen) {
       startZeit: Number(roheExpedition.startZeit),
       endZeit: Number(roheExpedition.endZeit),
     };
+
+    // Ereignis der laufenden Expedition: nur übernehmen, wenn es zu einer
+    // bekannten Ereignis-Art gehört und der Zeitstempel plausibel ist -
+    // sonst bliebe ein Ereignis für immer unlösbar hängen.
+    const bekannteEreignisse = new Set(EXPEDITIONS_EREIGNISSE.map((e) => e.id));
+    if (bekannteEreignisse.has(roheExpedition.ereignisId) && Number.isFinite(Number(roheExpedition.ereignisZeit))) {
+      zustand.expedition.ereignisId = roheExpedition.ereignisId;
+      zustand.expedition.ereignisZeit = Number(roheExpedition.ereignisZeit);
+      zustand.expedition.ereignisGeloest = roheExpedition.ereignisGeloest === true;
+    }
+    const bonusRoh = Number(roheExpedition.bonusFundChance);
+    if (Number.isFinite(bonusRoh) && bonusRoh > 0) zustand.expedition.bonusFundChance = bonusRoh;
   } else {
     zustand.expedition = null;
   }

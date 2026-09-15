@@ -24,6 +24,7 @@ import {
   AQUARIUM_FISCHE,
   findeAquariumFisch,
   EXPEDITIONEN,
+  EXPEDITIONS_EREIGNISSE,
   PERLEN_SHOP,
   GLUECKSRAD_SEGMENTE,
   LEVEL_BASIS,
@@ -33,6 +34,14 @@ import {
 } from '../www/js/daten.js';
 import { zusammenfuehren, alsText, ausText } from '../www/js/speicher.js';
 import { zahl, ganzzahl, dauer, uhr } from '../www/js/zahlen.js';
+
+/** Liefert die übergebenen Werte der Reihe nach bei jedem Aufruf, danach
+ *  immer wieder den letzten – für Funktionen, die mehrfach hintereinander
+ *  einen unterschiedlichen Zufallswert brauchen (z. B. Ereignis-Auswahl). */
+function folge(...werte) {
+  let i = 0;
+  return () => werte[Math.min(i++, werte.length - 1)];
+}
 
 /* ------------------------------------------------------------------ */
 /* Grundzustand                                                        */
@@ -858,6 +867,260 @@ test('Bessere Angel verkürzt die Expeditionsdauer spürbar', () => {
   const dauerHolz = mitHolz.expedition.endZeit - jetzt;
   const dauerStahl = mitStahl.expedition.endZeit - jetzt;
   assert.ok(dauerStahl < dauerHolz, 'Stahlangel sollte die Expedition verkürzen');
+});
+
+/* ------------------------------------------------------------------ */
+/* Wagnis: teure Elite-Expedition mit garantierter Top-Ausrüstung       */
+/* ------------------------------------------------------------------ */
+
+test('Wagnis ist teuer, liefert garantiert Ausrüstung und bevorzugt episch/legendär deutlich', () => {
+  const wagnis = EXPEDITIONEN.find((e) => e.id === 'wagnis');
+  assert.ok(wagnis.kostenSekundenwert > 0, 'Wagnis sollte einen Eintrittspreis haben');
+  assert.equal(wagnis.ausruestungChance, 1, 'Wagnis sollte garantiert Ausrüstung liefern');
+  const g = wagnis.ausruestungGewichte;
+  assert.ok(g.legendaer + g.episch > g.gewoehnlich + g.selten, 'Wagnis sollte klar auf episch/legendär setzen');
+});
+
+test('Wagnis starten kostet BL, zu wenig BL lässt die Fahrt gar nicht erst los', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  z.module.qualle = 1; // winzige Produktion, damit der Preis winzig, aber nie 0 ist
+  z.bl = 0;
+
+  const zuWenig = spiel.starteExpedition(z, 'wagnis', jetzt, () => 0.99);
+  assert.equal(zuWenig.erfolg, false);
+  assert.equal(zuWenig.grund, 'zu wenig Biolumineszenz');
+  assert.equal(z.expedition, null);
+
+  z.bl = 1_000_000;
+  const vorher = z.bl;
+  const ergebnis = spiel.starteExpedition(z, 'wagnis', jetzt, () => 0.99);
+  assert.equal(ergebnis.erfolg, true);
+  assert.ok(ergebnis.kosten > 0);
+  assert.equal(z.bl, vorher - ergebnis.kosten);
+});
+
+test('Wagnis: normale Expeditionen ohne kostenSekundenwert bleiben kostenlos beim Start', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  z.bl = 0;
+  const ergebnis = spiel.starteExpedition(z, 'kurz', jetzt, () => 0.99);
+  assert.equal(ergebnis.erfolg, true);
+  assert.equal(ergebnis.kosten, 0);
+  assert.equal(z.bl, 0);
+});
+
+/* ------------------------------------------------------------------ */
+/* Expeditions-Ereignisse: echte Entscheidungen während der Fahrt       */
+/* ------------------------------------------------------------------ */
+
+test('Alle Expeditions-Ereignisse sind eindeutig und haben eine bekannte Kosten-/Wirkungsart', () => {
+  const bekannteKostenarten = new Set(['bl', 'koeder']);
+  const bekannteWirkungen = new Set(['zeitReduktion', 'fundChanceBonus']);
+  const ids = new Set();
+  for (const e of EXPEDITIONS_EREIGNISSE) {
+    assert.ok(!ids.has(e.id), `doppelte ID: ${e.id}`);
+    ids.add(e.id);
+    assert.ok(bekannteKostenarten.has(e.kostenArt), `unbekannte Kostenart bei ${e.id}`);
+    assert.ok(bekannteWirkungen.has(e.wirkung.art), `unbekannte Wirkungsart bei ${e.id}`);
+    assert.ok(e.name && e.text && e.symbol);
+  }
+});
+
+test('Ereignis: zufall() unter der Schwelle löst eines aus, im richtigen Zeitfenster', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  // 1. Aufruf < Schwelle -> Ereignis löst aus. 2. Aufruf wählt Index 0 ("sturm",
+  // da ohne Köder das einzig mögliche Ereignis). 3. Aufruf liegt in der Mitte
+  // des Zeitfensters.
+  const ergebnis = spiel.starteExpedition(z, 'lang', jetzt, folge(0, 0, 0.5));
+  assert.equal(z.expedition.ereignisId, 'sturm');
+  assert.equal(z.expedition.ereignisGeloest, false);
+  const dauer = ergebnis.endZeit - jetzt;
+  assert.ok(z.expedition.ereignisZeit >= jetzt + dauer * 0.25);
+  assert.ok(z.expedition.ereignisZeit <= jetzt + dauer * 0.75);
+});
+
+test('Ereignis: zufall() über der Schwelle löst nichts aus', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  spiel.starteExpedition(z, 'lang', jetzt, () => 0.99);
+  assert.equal(z.expedition.ereignisId, undefined);
+});
+
+test('Ereignis "Strudel" (Köder-Opfer) kommt nur infrage, wenn ein Köder ausgerüstet ist', () => {
+  const jetzt = 1_000_000;
+  const ohneKoeder = spiel.neuerZustand();
+  ohneKoeder.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(ohneKoeder, 'angel_holz');
+  // Index 1 würde "strudel" treffen, wenn er in Frage käme - ohne Köder gibt
+  // es aber nur "sturm" in der Auswahl, Index 1 fällt auf denselben Eintrag zurück.
+  spiel.starteExpedition(ohneKoeder, 'lang', jetzt, folge(0, 0.99, 0.5));
+  assert.equal(ohneKoeder.expedition.ereignisId, 'sturm');
+
+  const mitKoeder = spiel.neuerZustand();
+  mitKoeder.besitzItems.push('angel_holz', 'koeder_wurm');
+  spiel.ruestAusItem(mitKoeder, 'angel_holz');
+  spiel.ruestAusItem(mitKoeder, 'koeder_wurm');
+  spiel.starteExpedition(mitKoeder, 'lang', jetzt, folge(0, 0.99, 0.5));
+  assert.equal(mitKoeder.expedition.ereignisId, 'strudel');
+});
+
+test('expeditionsEreignisBereit: erst ab der Ereigniszeit, nie vor dem Auslösen oder nach dem Lösen', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  spiel.starteExpedition(z, 'lang', jetzt, folge(0, 0, 0.5));
+  const ereignisZeit = z.expedition.ereignisZeit;
+
+  assert.equal(spiel.expeditionsEreignisBereit(z, ereignisZeit - 1), false);
+  assert.equal(spiel.expeditionsEreignisBereit(z, ereignisZeit), true);
+
+  spiel.loeseExpeditionsEreignis(z, false, ereignisZeit);
+  assert.equal(spiel.expeditionsEreignisBereit(z, ereignisZeit), false);
+});
+
+test('Ereignis ablehnen kostet nichts und ändert an der Fahrt gar nichts', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  spiel.starteExpedition(z, 'lang', jetzt, folge(0, 0, 0.5));
+  const endZeitVorher = z.expedition.endZeit;
+  const blVorher = z.bl;
+
+  const ergebnis = spiel.loeseExpeditionsEreignis(z, false, z.expedition.ereignisZeit);
+  assert.equal(ergebnis.erfolg, true);
+  assert.equal(ergebnis.bezahlt, false);
+  assert.equal(z.expedition.endZeit, endZeitVorher);
+  assert.equal(z.bl, blVorher);
+  assert.equal(z.expedition.ereignisGeloest, true);
+});
+
+test('Ereignis "Sturm" bezahlen kostet BL und verkürzt die Restzeit spürbar', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  z.module.qualle = 50;
+  spiel.starteExpedition(z, 'lang', jetzt, folge(0, 0, 0.5));
+  z.bl = 1_000_000; // genug, um das Ereignis auch bezahlen zu können
+  const ereignisZeit = z.expedition.ereignisZeit;
+  const restVorher = z.expedition.endZeit - ereignisZeit;
+  const blVorher = z.bl;
+
+  const ergebnis = spiel.loeseExpeditionsEreignis(z, true, ereignisZeit);
+  assert.equal(ergebnis.erfolg, true);
+  assert.equal(ergebnis.bezahlt, true);
+  assert.ok(z.bl < blVorher, 'BL sollte für das Ereignis bezahlt worden sein');
+  const restNachher = z.expedition.endZeit - ereignisZeit;
+  assert.ok(restNachher < restVorher, 'Restzeit sollte kürzer geworden sein');
+  assert.ok(Math.abs(restNachher - restVorher * 0.6) < 1, 'Sturm sollte die Restzeit um 40 % senken');
+});
+
+test('Ereignis bezahlen schlägt bei zu wenig BL fehl und bleibt ungelöst', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  z.module.qualle = 50; // Produktion > 0, damit der Preis tatsächlich positiv ist
+  spiel.starteExpedition(z, 'lang', jetzt, folge(0, 0, 0.5));
+  z.bl = 0;
+
+  const ergebnis = spiel.loeseExpeditionsEreignis(z, true, z.expedition.ereignisZeit);
+  assert.equal(ergebnis.erfolg, false);
+  assert.equal(ergebnis.grund, 'zu wenig Biolumineszenz');
+  assert.equal(z.expedition.ereignisGeloest, false, 'sollte weiter lösbar bleiben, sobald genug BL da ist');
+});
+
+test('Ereignis "Strudel" bezahlen opfert den ausgerüsteten Köder und gibt Fundchance-Bonus', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz', 'koeder_wurm');
+  spiel.ruestAusItem(z, 'angel_holz');
+  spiel.ruestAusItem(z, 'koeder_wurm');
+  spiel.starteExpedition(z, 'lang', jetzt, folge(0, 0.99, 0.5));
+  assert.equal(z.expedition.ereignisId, 'strudel');
+
+  const ergebnis = spiel.loeseExpeditionsEreignis(z, true, z.expedition.ereignisZeit);
+  assert.equal(ergebnis.erfolg, true);
+  assert.equal(z.ausruestung.koeder, null, 'Köder sollte verbraucht sein');
+  assert.ok(!z.besitzItems.includes('koeder_wurm'), 'Köder sollte aus dem Inventar verschwunden sein');
+  assert.equal(z.expedition.bonusFundChance, 0.3);
+});
+
+test('Ereignis "Strudel" bezahlen ohne ausgerüsteten Köder schlägt fehl', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  z.expedition = { expeditionId: 'lang', startZeit: jetzt, endZeit: jetzt + 1000, ereignisId: 'strudel', ereignisZeit: jetzt, ereignisGeloest: false };
+
+  const ergebnis = spiel.loeseExpeditionsEreignis(z, true, jetzt);
+  assert.equal(ergebnis.erfolg, false);
+  assert.equal(ergebnis.grund, 'kein Köder ausgerüstet');
+});
+
+test('Ereignis-Fundbonus fließt tatsächlich in die Fundchance beim Sammeln ein', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz', 'koeder_wurm');
+  spiel.ruestAusItem(z, 'angel_holz');
+  spiel.ruestAusItem(z, 'koeder_wurm');
+  const start = spiel.starteExpedition(z, 'kurz', jetzt, folge(0, 0.99, 0.5));
+  assert.equal(z.expedition.ereignisId, 'strudel');
+  spiel.loeseExpeditionsEreignis(z, true, z.expedition.ereignisZeit);
+  assert.equal(z.expedition.bonusFundChance, 0.3);
+
+  // Der Köder wurde für den Strudel geopfert, zählt beim Sammeln also nicht
+  // mehr mit: kurz.kistenChance 0,5 + angel_holz.fundChance 0,12 + Strudel-
+  // Bonus 0,3 = 0,92. 0,7 liegt klar darunter, ohne den Ereignis-Bonus (nur
+  // 0,62) läge es klar darüber.
+  const ergebnis = spiel.sammleExpedition(z, start.endZeit, () => 0.7);
+  assert.equal(ergebnis.kiste, 'holz');
+});
+
+test('Wagnis liefert beim Sammeln garantiert Ausrüstung, bevorzugt aus der eigenen Gewichtstabelle', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  z.bl = 1_000_000_000;
+  const start = spiel.starteExpedition(z, 'wagnis', jetzt, () => 0.99); // kein Ereignis
+  // zufall() nahe 1 trifft in der Wagnis-Gewichtstabelle die legendäre Stufe.
+  const ergebnis = spiel.sammleExpedition(z, start.endZeit, () => 0.999);
+  assert.ok(ergebnis.ausruestung, 'Wagnis sollte garantiert Ausrüstung liefern');
+  assert.equal(ergebnis.ausruestung.seltenheit, 'legendaer');
+});
+
+test('Speicher: nur ein bekanntes Expeditions-Ereignis mit gültigem Zeitstempel wird übernommen', () => {
+  const vorlage = spiel.neuerZustand();
+  const gueltig = zusammenfuehren(vorlage, {
+    expedition: { expeditionId: 'lang', startZeit: 1000, endZeit: 2000, ereignisId: 'sturm', ereignisZeit: 1500, ereignisGeloest: false, bonusFundChance: 0.3 },
+  });
+  assert.equal(gueltig.expedition.ereignisId, 'sturm');
+  assert.equal(gueltig.expedition.ereignisZeit, 1500);
+  assert.equal(gueltig.expedition.ereignisGeloest, false);
+  assert.equal(gueltig.expedition.bonusFundChance, 0.3);
+
+  const unbekannt = zusammenfuehren(vorlage, {
+    expedition: { expeditionId: 'lang', startZeit: 1000, endZeit: 2000, ereignisId: 'gibtsNicht', ereignisZeit: 1500 },
+  });
+  assert.equal(unbekannt.expedition.ereignisId, undefined);
+
+  const kaputterZeitstempel = zusammenfuehren(vorlage, {
+    expedition: { expeditionId: 'lang', startZeit: 1000, endZeit: 2000, ereignisId: 'sturm', ereignisZeit: 'bald' },
+  });
+  assert.equal(kaputterZeitstempel.expedition.ereignisId, undefined);
 });
 
 test('Expedition: sammeln vor Ablauf schlägt fehl, danach klappt es und alles wird zurückgesetzt', () => {

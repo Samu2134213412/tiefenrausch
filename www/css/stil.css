@@ -1604,6 +1604,42 @@ button {
   margin-bottom: 10px;
 }
 
+/* Expeditions-Ereignis: eine echte Entscheidung während der Fahrt - fällt
+   bewusst auf (Warnfarbe, Puls), damit sie nicht im Vorbeiscrollen verpasst
+   wird, verschwindet aber nicht von allein wie Leuchtblase/Glücksfisch. */
+.expedition-ereignis-banner {
+  margin: 2px 0 10px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 122, 107, 0.16), rgba(255, 122, 107, 0.3));
+  border: 1px solid var(--warnung);
+  color: var(--warnung);
+  font-weight: 700;
+  font-size: 13.5px;
+  animation: tagestruhe-puls 1.8s ease-in-out infinite;
+}
+
+.expedition-ereignis-banner:active {
+  transform: scale(0.98);
+}
+
+/* Wagnis: die teure Elite-Expedition hebt sich vom Rest der Liste ab -
+   dasselbe Gold wie bei legendärer Ausrüstung, damit sofort klar ist,
+   worum es hier geht. */
+.liste.expeditionen .eintrag.elite {
+  border-color: var(--perle);
+  background: linear-gradient(180deg, rgba(255, 217, 160, 0.12), var(--flaeche));
+}
+
+.liste.expeditionen .eintrag.elite .preis-wert {
+  color: var(--perle) !important;
+}
+
 /* ---------------- Aquarium ---------------- */
 
 .aquarium .erfolg {
