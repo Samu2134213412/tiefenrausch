@@ -808,6 +808,25 @@ test('Kiste öffnen: besitzt man schon alles dieser Seltenheit, gibt es BL statt
   assert.ok(z.bl > vorher, 'BL sollte gutgeschrieben worden sein');
 });
 
+test('Duplikat-Ausgleich ist bewusst klein gehalten, damit eine volle Sammlung kein Ersatz-Einkommen wird', () => {
+  assert.equal(spiel.KISTEN_DUPLIKAT_SEKUNDENWERT.gewoehnlich, 5);
+  assert.equal(spiel.KISTEN_DUPLIKAT_SEKUNDENWERT.selten, 20);
+  assert.equal(spiel.KISTEN_DUPLIKAT_SEKUNDENWERT.episch, 75);
+  assert.equal(spiel.KISTEN_DUPLIKAT_SEKUNDENWERT.legendaer, 300);
+
+  // Bei einer Produktion, die früher ein ~500.000-BL-Duplikat ausgeschüttet
+  // hätte (3600 Sekunden Produktion), bleibt der neue Wert eine Größenordnung
+  // kleiner statt die eigentliche Produktion zu trivialisieren.
+  const z = spiel.neuerZustand();
+  z.module.roboter = 3; // Produktion ≈ 141/Sek. – 3600 * 141 ≈ 507.600 im alten System
+  for (const i of ITEMS) if (i.seltenheit === 'legendaer') z.besitzItems.push(i.id);
+  z.kisten.gold = 1;
+  const produktion = spiel.produktionProSekunde(z);
+  const ergebnis = spiel.oeffneKiste(z, 'gold', Date.now(), () => 0.999);
+  assert.equal(ergebnis.duplikatBL, 300 * produktion);
+  assert.ok(ergebnis.duplikatBL < 100_000, `Duplikat-BL zu hoch: ${ergebnis.duplikatBL}`);
+});
+
 test('Jede Kiste hat Gewichte für alle vier Seltenheiten', () => {
   for (const k of KISTEN_TYPEN) {
     for (const s of ['gewoehnlich', 'selten', 'episch', 'legendaer']) {
@@ -1066,6 +1085,24 @@ test('Jede Expedition hat eine direkte Ausrüstungs-Fundchance', () => {
   for (const e of EXPEDITIONEN) {
     assert.ok(typeof e.ausruestungChance === 'number' && e.ausruestungChance > 0, `${e.id} hat keine Ausrüstungschance`);
   }
+});
+
+test('Expeditions-BL-Werte sind moderat gehalten (nicht mehr die überhöhten Ursprungswerte)', () => {
+  assert.equal(EXPEDITIONEN.find((e) => e.id === 'kurz').blSekundenwert, 120);
+  assert.equal(EXPEDITIONEN.find((e) => e.id === 'mittel').blSekundenwert, 160);
+  assert.equal(EXPEDITIONEN.find((e) => e.id === 'lang').blSekundenwert, 200);
+});
+
+test('Expedition: BL-Ertrag bleibt bei hoher Produktion proportional zum reduzierten Sekundenwert', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  z.module.farm = 500; // hohe Produktion, damit die Basis-Formel greift statt der Mindestbetrag-Untergrenze
+  const produktionVorher = spiel.produktionProSekunde(z, jetzt);
+  const start = spiel.starteExpedition(z, 'lang', jetzt);
+  const ergebnis = spiel.sammleExpedition(z, start.endZeit, () => 1);
+  assert.equal(ergebnis.bl, 200 * produktionVorher);
 });
 
 test('Expedition kann Ausrüstung direkt liefern, ganz ohne den Umweg über eine Kiste', () => {

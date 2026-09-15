@@ -365,13 +365,13 @@ export function findeKistenTyp(id) {
  */
 export const EXPEDITIONEN = [
   { id: 'kurz', name: 'Kurzer Streifzug', symbol: '🚣', dauerMs: 5 * 60 * 1000,
-    blSekundenwert: 200, kistenTyp: 'holz', kistenChance: 0.5, fischChance: 0.12, ausruestungChance: 0.08,
+    blSekundenwert: 120, kistenTyp: 'holz', kistenChance: 0.5, fischChance: 0.12, ausruestungChance: 0.08,
     text: 'Ein kurzer Ausflug ins Blaue, gleich wieder zurück.' },
   { id: 'mittel', name: 'Tauchgang', symbol: '🛶', dauerMs: 30 * 60 * 1000,
-    blSekundenwert: 260, kistenTyp: 'silber', kistenChance: 0.55, fischChance: 0.22, ausruestungChance: 0.14,
+    blSekundenwert: 160, kistenTyp: 'silber', kistenChance: 0.55, fischChance: 0.22, ausruestungChance: 0.14,
     text: 'Genug Zeit, um ein Stück weiter zu kommen als sonst.' },
   { id: 'lang', name: 'Tiefseeexpedition', symbol: '🚤', dauerMs: 3 * 60 * 60 * 1000,
-    blSekundenwert: 320, kistenTyp: 'gold', kistenChance: 0.6, fischChance: 0.35, ausruestungChance: 0.22,
+    blSekundenwert: 200, kistenTyp: 'gold', kistenChance: 0.6, fischChance: 0.35, ausruestungChance: 0.22,
     text: 'Stunden, in denen niemand weiß, wie tief die Angel wirklich hängt.' },
 ];
 

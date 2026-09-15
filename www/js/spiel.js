@@ -741,14 +741,19 @@ export function koederFundBonus(zustand) {
 /* Kisten: Loot mit Seltenheitsstufen                                  */
 /* ------------------------------------------------------------------ */
 
-/** „Duplikat“-Ausgleich in Sekunden Produktion, gestaffelt nach Seltenheit –
- *  eine Kiste, deren komplette Seltenheitsstufe schon besessen wird, darf
- *  sich trotzdem lohnen. */
+/**
+ * „Duplikat“-Ausgleich in Sekunden Produktion, gestaffelt nach Seltenheit –
+ * eine Kiste, deren komplette Seltenheitsstufe schon besessen wird, darf sich
+ * trotzdem lohnen. Bewusst klein gehalten: sobald die ganze Sammlung voll
+ * ist, würde JEDE weitere Kiste zu Duplikat-BL – bei hoher Produktion sonst
+ * schnell ein Ersatz-Einkommen, das die eigentliche Produktion trivialisiert
+ * statt sie nur sanft abzufedern.
+ */
 export const KISTEN_DUPLIKAT_SEKUNDENWERT = {
-  gewoehnlich: 60,
-  selten: 240,
-  episch: 900,
-  legendaer: 3600,
+  gewoehnlich: 5,
+  selten: 20,
+  episch: 75,
+  legendaer: 300,
 };
 
 /**
@@ -932,7 +937,7 @@ export function sammleExpedition(zustand, jetzt = Date.now(), zufall = Math.rand
 
   const produktion = produktionProSekunde(zustand, jetzt);
   const basis = def.blSekundenwert * produktion;
-  const mindestens = Math.max(80, tippErtrag(zustand, jetzt) * 30);
+  const mindestens = Math.max(50, tippErtrag(zustand, jetzt) * 18);
   const bl = Math.max(basis, mindestens) * koederBlFaktor(zustand);
   gutschreiben(zustand, bl);
 
