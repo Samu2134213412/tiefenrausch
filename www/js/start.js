@@ -139,6 +139,23 @@ const oberflaeche = erzeugeOberflaeche(zustand, {
     speicher.speichern(zustand);
   },
 
+  kaufeSkillknoten(id) {
+    const ergebnis = spiel.kaufeSkillknoten(zustand, id);
+    if (!ergebnis.erfolg) {
+      const texte = {
+        'zu wenig Skillpunkte': 'Dafür reichen die Skillpunkte nicht.',
+        'Voraussetzung fehlt': 'Erst den vorherigen Knoten in diesem Zweig freischalten.',
+      };
+      oberflaeche.melde(texte[ergebnis.grund] ?? 'Nicht verfügbar.');
+      return;
+    }
+    oberflaeche.melde(`${ergebnis.knoten.name} freigeschaltet.`);
+    klang.kauf();
+    vibriere(10);
+    oberflaeche.aktualisiere(zustand);
+    speicher.speichern(zustand);
+  },
+
   dreheGluecksrad() {
     // Der Zufall fällt sofort (und mit ihm die 24-Stunden-Sperre) - die
     // anschließende Dreh-Animation ist reine Inszenierung des bereits
@@ -329,7 +346,7 @@ function pruefeFortschritt() {
       levelMeilensteinWarteschlange.push(e);
     } else {
       klang.levelAuf();
-      oberflaeche.melde(`⭐ Level ${e.level} erreicht! +${zahl(e.bl)} BL`);
+      oberflaeche.melde(`⭐ Level ${e.level} erreicht! +${zahl(e.bl)} BL, +1 Skillpunkt`);
     }
   }
 

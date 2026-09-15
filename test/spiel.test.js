@@ -27,6 +27,9 @@ import {
   PERLEN_SHOP,
   GLUECKSRAD_SEGMENTE,
   LEVEL_BASIS,
+  SKILLBAUM,
+  alleSkillknoten,
+  findeSkillknoten,
 } from '../www/js/daten.js';
 import { zusammenfuehren, alsText, ausText } from '../www/js/speicher.js';
 import { zahl, ganzzahl, dauer, uhr } from '../www/js/zahlen.js';
@@ -1150,10 +1153,10 @@ test('Perlen-Shop: "Glückssträhne" erhöht Fundchancen auf Expeditionen', () =
   spiel.kaufePerlenShopItem(z, 'kistenglueck');
 
   const start = spiel.starteExpedition(z, 'kurz', jetzt);
-  // Schwelle ohne Glückssträhne: 0,5 (Basis) + 0,10 (Angel) = 0,60.
-  // Mit Glückssträhne: + 0,05 = 0,65. 0,62 liegt genau dazwischen und
+  // Schwelle ohne Glückssträhne: 0,5 (Basis) + 0,12 (Angel) = 0,62.
+  // Mit Glückssträhne: + 0,05 = 0,67. 0,645 liegt genau dazwischen und
   // beweist damit wirklich den Beitrag des Perlen-Shop-Kaufs.
-  const ergebnis = spiel.sammleExpedition(z, start.endZeit, () => 0.62);
+  const ergebnis = spiel.sammleExpedition(z, start.endZeit, () => 0.645);
   assert.equal(ergebnis.kiste, 'holz');
 });
 
@@ -1460,4 +1463,183 @@ test('Speicher: levelBelohntBis wird als Zahl übernommen, garbage wird zu 0', (
   const vorlage = spiel.neuerZustand();
   assert.equal(zusammenfuehren(vorlage, { levelBelohntBis: 12 }).levelBelohntBis, 12);
   assert.equal(zusammenfuehren(vorlage, { levelBelohntBis: 'zwölf' }).levelBelohntBis, 0);
+});
+
+/* ------------------------------------------------------------------ */
+/* Skillbaum                                                           */
+/* ------------------------------------------------------------------ */
+
+test('Alle Skillbaum-Knoten sind eindeutig, haben eine bekannte Wirkungsart und eine gültige Voraussetzung', () => {
+  const bekannteArten = new Set([
+    'produktionBonus', 'offlineAnteilBonus', 'tippBonus', 'komboFensterFaktor',
+    'fundChanceBonus', 'expeditionsDauerFaktor',
+  ]);
+  const ids = new Set(alleSkillknoten().map((k) => k.id));
+  assert.equal(ids.size, alleSkillknoten().length, 'Knoten-IDs müssen eindeutig sein');
+  for (const knoten of alleSkillknoten()) {
+    assert.ok(bekannteArten.has(knoten.wirkung.art), `unbekannte Wirkungsart bei ${knoten.id}`);
+    assert.ok(knoten.kosten > 0 && knoten.name && knoten.text);
+    if (knoten.braucht) assert.ok(ids.has(knoten.braucht), `unbekannte Voraussetzung bei ${knoten.id}`);
+  }
+});
+
+test('findeSkillknoten findet bekannte Knoten und liefert null für unbekannte', () => {
+  assert.equal(findeSkillknoten('produktion_1').name, 'Effiziente Module');
+  assert.equal(findeSkillknoten('gibtsNicht'), null);
+});
+
+test('Skillbaum: kaufen kostet Skillpunkte, doppelt kaufen und zu wenig Punkte schlagen fehl', () => {
+  const z = spiel.neuerZustand();
+  const wurzel = SKILLBAUM[0].knoten[0];
+  z.skillpunkte = wurzel.kosten - 1;
+
+  const zuWenig = spiel.kaufeSkillknoten(z, wurzel.id);
+  assert.equal(zuWenig.erfolg, false);
+  assert.equal(zuWenig.grund, 'zu wenig Skillpunkte');
+
+  z.skillpunkte = wurzel.kosten + 2;
+  const ergebnis = spiel.kaufeSkillknoten(z, wurzel.id);
+  assert.equal(ergebnis.erfolg, true);
+  assert.equal(z.skillpunkte, 2);
+  assert.ok(z.skillbaum.includes(wurzel.id));
+
+  const nochmal = spiel.kaufeSkillknoten(z, wurzel.id);
+  assert.equal(nochmal.erfolg, false);
+  assert.equal(nochmal.grund, 'bereits freigeschaltet');
+});
+
+test('Skillbaum: ein Knoten mit fehlender Voraussetzung lässt sich nicht kaufen', () => {
+  const z = spiel.neuerZustand();
+  const zweig = SKILLBAUM[0];
+  const zweiterKnoten = zweig.knoten[1];
+  z.skillpunkte = 100;
+
+  const ergebnis = spiel.kaufeSkillknoten(z, zweiterKnoten.id);
+  assert.equal(ergebnis.erfolg, false);
+  assert.equal(ergebnis.grund, 'Voraussetzung fehlt');
+
+  spiel.kaufeSkillknoten(z, zweig.knoten[0].id);
+  const jetztOk = spiel.kaufeSkillknoten(z, zweiterKnoten.id);
+  assert.equal(jetztOk.erfolg, true);
+});
+
+test('Skillbaum "Effiziente Module" erhöht die Gesamtproduktion', () => {
+  const ohne = spiel.neuerZustand();
+  ohne.module.qualle = 20;
+  const mit = spiel.neuerZustand();
+  mit.module.qualle = 20;
+  mit.skillpunkte = 5;
+  spiel.kaufeSkillknoten(mit, 'produktion_1');
+
+  assert.ok(spiel.produktionProSekunde(mit) > spiel.produktionProSekunde(ohne));
+});
+
+test('Skillbaum "Fester Griff" erhöht den Tipp-Ertrag', () => {
+  const ohne = spiel.neuerZustand();
+  const mit = spiel.neuerZustand();
+  mit.skillpunkte = 5;
+  spiel.kaufeSkillknoten(mit, 'tippen_1');
+
+  assert.ok(spiel.tippErtrag(mit, 1000) > spiel.tippErtrag(ohne, 1000));
+});
+
+test('Skillbaum "Rhythmusgefühl" verlängert das Kombofenster und kombiniert sich mit dem Perlen-Shop', () => {
+  const z = spiel.neuerZustand();
+  const basis = spiel.komboFensterEffektiv(z);
+
+  z.skillpunkte = 100;
+  spiel.kaufeSkillknoten(z, 'tippen_1');
+  spiel.kaufeSkillknoten(z, 'tippen_2');
+  const mitSkill = spiel.komboFensterEffektiv(z);
+  assert.ok(mitSkill > basis, 'Skillbaum sollte das Kombofenster verlängern');
+
+  z.perlen = 100;
+  spiel.kaufePerlenShopItem(z, 'kombogeduld');
+  const mitBeiden = spiel.komboFensterEffektiv(z);
+  assert.ok(mitBeiden > mitSkill, 'Perlen-Shop-Bonus sollte sich zusätzlich mit dem Skillbaum multiplizieren');
+});
+
+test('Skillbaum "Gutes Auge" erhöht die Fundchance auf Expeditionen', () => {
+  const jetzt = 1_000_000;
+  const z = spiel.neuerZustand();
+  z.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(z, 'angel_holz');
+  z.skillpunkte = 5;
+  spiel.kaufeSkillknoten(z, 'entdecker_1');
+
+  const start = spiel.starteExpedition(z, 'kurz', jetzt);
+  // Schwelle ohne Bonus: 0,5 (Basis) + 0,12 (Angel) = 0,62. Mit "Gutes Auge"
+  // (+0,04): 0,66. 0,64 liegt genau dazwischen.
+  const ergebnis = spiel.sammleExpedition(z, start.endZeit, () => 0.64);
+  assert.equal(ergebnis.kiste, 'holz');
+});
+
+test('Skillbaum "Erfahrene Crew" verkürzt die Expeditionsdauer', () => {
+  const jetzt = 1_000_000;
+  const ohne = spiel.neuerZustand();
+  ohne.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(ohne, 'angel_holz');
+  const startOhne = spiel.starteExpedition(ohne, 'kurz', jetzt);
+
+  const mit = spiel.neuerZustand();
+  mit.besitzItems.push('angel_holz');
+  spiel.ruestAusItem(mit, 'angel_holz');
+  mit.skillpunkte = 100;
+  spiel.kaufeSkillknoten(mit, 'entdecker_1');
+  spiel.kaufeSkillknoten(mit, 'entdecker_2');
+  const startMit = spiel.starteExpedition(mit, 'kurz', jetzt);
+
+  assert.ok(startMit.endZeit - jetzt < startOhne.endZeit - jetzt, 'Expedition sollte mit dem Skill kürzer dauern');
+});
+
+test('Skillbaum "Ruhige Tiefe"-artiger Offline-Bonus ("Nachtschicht") erhöht den Offline-Anteil', () => {
+  const ohne = spiel.neuerZustand();
+  ohne.module.qualle = 20;
+  const mit = spiel.neuerZustand();
+  mit.module.qualle = 20;
+  mit.skillpunkte = 100;
+  spiel.kaufeSkillknoten(mit, 'produktion_1');
+  spiel.kaufeSkillknoten(mit, 'produktion_2');
+  spiel.kaufeSkillknoten(mit, 'produktion_3');
+
+  const ertragOhne = spiel.offlineErtrag(ohne, 3600).menge;
+  const ertragMit = spiel.offlineErtrag(mit, 3600).menge;
+  assert.ok(ertragMit > ertragOhne, 'Offline-Ertrag sollte mit "Nachtschicht" höher sein');
+});
+
+test('Skillbaum: gekaufte Knoten und Skillpunkte überstehen einen Aufstieg', () => {
+  const z = spiel.neuerZustand();
+  z.skillpunkte = 100;
+  spiel.kaufeSkillknoten(z, 'produktion_1');
+  z.skillpunkte = 3;
+  z.gesamtRunde = 4e6;
+  z.gesamtGesamt = 9e6;
+
+  const ergebnis = spiel.aufstieg(z);
+  assert.equal(ergebnis.erfolg, true);
+  assert.ok(z.skillbaum.includes('produktion_1'), 'Skillbaum-Kauf sollte einen Aufstieg überstehen');
+  assert.equal(z.skillpunkte, 3, 'Skillpunkte sollten einen Aufstieg überstehen');
+});
+
+test('Level-Aufstieg gibt Skillpunkte: pro Level genau einen', () => {
+  const z = spiel.neuerZustand();
+  z.module.qualle = 20;
+  z.gesamtGesamt = LEVEL_BASIS * 5;
+  assert.equal(z.skillpunkte, 0);
+
+  const ergebnisse = spiel.pruefeLevelAufstieg(z, Date.now(), () => 0.5);
+  assert.equal(z.skillpunkte, ergebnisse.length);
+  assert.ok(z.skillpunkte >= 1);
+});
+
+test('Speicher: nur bekannte Skillbaum-Knoten werden übernommen', () => {
+  const vorlage = spiel.neuerZustand();
+  const muell = zusammenfuehren(vorlage, { skillbaum: ['produktion_1', 'gibtsNicht', 42] });
+  assert.deepEqual(muell.skillbaum, ['produktion_1']);
+});
+
+test('Speicher: skillpunkte wird als Zahl übernommen, garbage wird zu 0', () => {
+  const vorlage = spiel.neuerZustand();
+  assert.equal(zusammenfuehren(vorlage, { skillpunkte: 4 }).skillpunkte, 4);
+  assert.equal(zusammenfuehren(vorlage, { skillpunkte: 'vier' }).skillpunkte, 0);
 });

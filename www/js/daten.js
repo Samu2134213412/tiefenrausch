@@ -306,24 +306,30 @@ export const SELTENHEITEN = {
  * Man traegt hoechstens ein Teil je Steckplatz gleichzeitig - ein besseres
  * ersetzt das alte, das alte bleibt aber im Inventar (nicht verloren).
  */
+/**
+ * Werte bewusst so austariert, dass schon die erste (gewöhnliche) Angel/Köder
+ * sich spürbar lohnt, statt nur eine Formalität zum Freischalten von
+ * Expeditionen zu sein - der Sprung von "nichts ausgerüstet" auf "erste
+ * Angel" soll sich größer anfühlen als jeder folgende Tier-Sprung.
+ */
 export const ITEMS = [
   { id: 'angel_holz', slot: 'angel', name: 'Hölzerne Angel', symbol: '🎣', seltenheit: 'gewoehnlich',
-    zeitFaktor: 1, fundChance: 0.10, text: 'Reicht gerade so, um überhaupt loszufahren.' },
+    zeitFaktor: 0.92, fundChance: 0.12, text: 'Reicht gerade so, um überhaupt loszufahren.' },
   { id: 'angel_stahl', slot: 'angel', name: 'Stahlangel', symbol: '🎣', seltenheit: 'selten',
-    zeitFaktor: 0.85, fundChance: 0.18, text: 'Hält auch größerem Zug stand.' },
+    zeitFaktor: 0.80, fundChance: 0.20, text: 'Hält auch größerem Zug stand.' },
   { id: 'angel_leucht', slot: 'angel', name: 'Leuchtangel', symbol: '🎣', seltenheit: 'episch',
-    zeitFaktor: 0.65, fundChance: 0.30, text: 'Lockt mit eigenem Licht, was sonst nie an die Oberfläche käme.' },
+    zeitFaktor: 0.62, fundChance: 0.32, text: 'Lockt mit eigenem Licht, was sonst nie an die Oberfläche käme.' },
   { id: 'angel_abgrund', slot: 'angel', name: 'Abgrundangel', symbol: '🎣', seltenheit: 'legendaer',
-    zeitFaktor: 0.45, fundChance: 0.48, text: 'Niemand weiß, aus welchem Metall sie gefertigt ist.' },
+    zeitFaktor: 0.42, fundChance: 0.50, text: 'Niemand weiß, aus welchem Metall sie gefertigt ist.' },
 
   { id: 'koeder_wurm', slot: 'koeder', name: 'Wattwurm', symbol: '🪱', seltenheit: 'gewoehnlich',
-    blFaktor: 1.1, fundBonus: 0.02, text: 'Der Klassiker. Funktioniert einfach.' },
+    blFaktor: 1.15, fundBonus: 0.03, text: 'Der Klassiker. Funktioniert einfach.' },
   { id: 'koeder_glitzer', slot: 'koeder', name: 'Glitzerköder', symbol: '🔸', seltenheit: 'selten',
-    blFaktor: 1.3, fundBonus: 0.04, text: 'Reflektiert jedes bisschen Licht, das es gibt.' },
+    blFaktor: 1.35, fundBonus: 0.05, text: 'Reflektiert jedes bisschen Licht, das es gibt.' },
   { id: 'koeder_pheromon', slot: 'koeder', name: 'Pheromonköder', symbol: '🧪', seltenheit: 'episch',
-    blFaktor: 1.6, fundBonus: 0.07, text: 'Riecht nach etwas, das man lieber nicht genau wissen möchte.' },
+    blFaktor: 1.65, fundBonus: 0.08, text: 'Riecht nach etwas, das man lieber nicht genau wissen möchte.' },
   { id: 'koeder_essenz', slot: 'koeder', name: 'Abyssal-Essenz', symbol: '🫧', seltenheit: 'legendaer',
-    blFaktor: 2.1, fundBonus: 0.12, text: 'Ein einzelner Tropfen genügt. Mehr würde wahrscheinlich niemand überleben.' },
+    blFaktor: 2.15, fundBonus: 0.13, text: 'Ein einzelner Tropfen genügt. Mehr würde wahrscheinlich niemand überleben.' },
 ];
 
 export function findeItem(id) {
@@ -496,5 +502,67 @@ export const GLUECKSRAD_SEGMENTE = [
 
 export function findeGluecksradSegment(id) {
   return GLUECKSRAD_SEGMENTE.find((s) => s.id === id) ?? null;
+}
+
+/* ==================================================================== */
+/* Skillbaum                                                            */
+/* ==================================================================== */
+
+/**
+ * Drei Zweige zu je drei Knoten, bezahlt mit Skillpunkten (einer pro
+ * Levelaufstieg, siehe spiel.pruefeLevelAufstieg). Jeder Knoten braucht -
+ * bis auf den ersten je Zweig - den vorherigen Knoten im selben Zweig, echte
+ * Reihenfolge statt freier Auswahl. Wirkung nutzt dieselben `art`-Kürzel wie
+ * der Perlen-Shop (siehe spiel.dauerhafteBonusSumme) plus zwei neue:
+ * 'produktionBonus' (globale Produktion) und 'tippBonus' (Tipp-Ertrag).
+ */
+export const SKILLBAUM = [
+  {
+    id: 'produktion',
+    name: 'Produktion',
+    symbol: '⚙️',
+    knoten: [
+      { id: 'produktion_1', name: 'Effiziente Module', kosten: 1, braucht: null,
+        text: '+5 % auf die gesamte Produktion.', wirkung: { art: 'produktionBonus', wert: 0.05 } },
+      { id: 'produktion_2', name: 'Optimierte Module', kosten: 2, braucht: 'produktion_1',
+        text: '+10 % auf die gesamte Produktion.', wirkung: { art: 'produktionBonus', wert: 0.10 } },
+      { id: 'produktion_3', name: 'Nachtschicht', kosten: 3, braucht: 'produktion_2',
+        text: '+15 Prozentpunkte Offline-Ertrag.', wirkung: { art: 'offlineAnteilBonus', wert: 0.15 } },
+    ],
+  },
+  {
+    id: 'tippen',
+    name: 'Tippen',
+    symbol: '👆',
+    knoten: [
+      { id: 'tippen_1', name: 'Fester Griff', kosten: 1, braucht: null,
+        text: '+8 % Tipp-Ertrag.', wirkung: { art: 'tippBonus', wert: 0.08 } },
+      { id: 'tippen_2', name: 'Rhythmusgefühl', kosten: 2, braucht: 'tippen_1',
+        text: 'Das Kombofenster ist 20 % länger.', wirkung: { art: 'komboFensterFaktor', wert: 1.2 } },
+      { id: 'tippen_3', name: 'Sichere Hand', kosten: 3, braucht: 'tippen_2',
+        text: '+15 % Tipp-Ertrag.', wirkung: { art: 'tippBonus', wert: 0.15 } },
+    ],
+  },
+  {
+    id: 'entdecker',
+    name: 'Entdecker',
+    symbol: '🧭',
+    knoten: [
+      { id: 'entdecker_1', name: 'Gutes Auge', kosten: 1, braucht: null,
+        text: '+4 Prozentpunkte Fundchance auf Expeditionen.', wirkung: { art: 'fundChanceBonus', wert: 0.04 } },
+      { id: 'entdecker_2', name: 'Erfahrene Crew', kosten: 2, braucht: 'entdecker_1',
+        text: 'Expeditionen sind 12 % schneller.', wirkung: { art: 'expeditionsDauerFaktor', wert: 0.88 } },
+      { id: 'entdecker_3', name: 'Sammlerglück', kosten: 3, braucht: 'entdecker_2',
+        text: '+6 Prozentpunkte Fundchance auf Expeditionen.', wirkung: { art: 'fundChanceBonus', wert: 0.06 } },
+    ],
+  },
+];
+
+export function alleSkillknoten() {
+  return SKILLBAUM.flatMap((zweig) => zweig.knoten);
+}
+
+export function findeSkillknoten(id) {
+  return alleSkillknoten().find((k) => k.id === id) ?? null;
 }
 

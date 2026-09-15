@@ -20,6 +20,7 @@ import {
   EXPEDITIONEN,
   AQUARIUM_FISCHE,
   PERLEN_SHOP,
+  alleSkillknoten,
 } from './daten.js';
 
 const SCHLUESSEL = 'tiefenrausch.spielstand';
@@ -90,6 +91,7 @@ export function zusammenfuehren(vorlage, gelesen) {
     'tipps', 'maxTiefe', 'spielzeit', 'zuletztGespielt', 'boostBis', 'werbungGesehen',
     'komboMax', 'kritischeTreffer', 'leuchtblasenGesammelt', 'gluecksfischeGefangen',
     'kistenGeoeffnet', 'expeditionenAbgeschlossen', 'tagesStreak', 'gluecksradGedreht', 'levelBelohntBis',
+    'skillpunkte',
     // kombo/komboLetzterTipp bewusst NICHT übernommen: eine geladene Kombo
     // ohne aktuellen Tipp-Rhythmus wäre irreführend – sie bleibt bei 0 und
     // baut sich beim nächsten Antippen neu auf.
@@ -195,6 +197,12 @@ export function zusammenfuehren(vorlage, gelesen) {
   const bekanntePerlenShopItems = new Set(PERLEN_SHOP.map((i) => i.id));
   zustand.perlenShop = Array.isArray(gelesen.perlenShop)
     ? [...new Set(gelesen.perlenShop.filter((x) => bekanntePerlenShopItems.has(x)))]
+    : [];
+
+  // Skillbaum: nur bekannte Knoten-IDs übernehmen.
+  const bekannteSkillknoten = new Set(alleSkillknoten().map((k) => k.id));
+  zustand.skillbaum = Array.isArray(gelesen.skillbaum)
+    ? [...new Set(gelesen.skillbaum.filter((x) => bekannteSkillknoten.has(x)))]
     : [];
 
   zustand.version = SPIELSTAND_VERSION;

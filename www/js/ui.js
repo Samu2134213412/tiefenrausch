@@ -21,6 +21,8 @@ import {
   SELTENHEITEN,
   PERLEN_SHOP,
   GLUECKSRAD_SEGMENTE,
+  SKILLBAUM,
+  alleSkillknoten,
 } from './daten.js';
 import * as spiel from './spiel.js';
 import { zahl, ganzzahl, dauer, uhr } from './zahlen.js';
@@ -70,6 +72,8 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     aufstiegHinweis: $('aufstieg-hinweis'),
     knopfAufstieg: $('knopf-aufstieg'),
     listePerlenshop: $('liste-perlenshop'),
+    skillbaumPunkteZahl: $('skillbaum-punkte-zahl'),
+    skillbaum: $('skillbaum'),
     gluecksrad: $('gluecksrad'),
     gluecksradKnopf: $('gluecksrad-knopf'),
     gluecksradStatus: $('gluecksrad-status'),
@@ -370,6 +374,57 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       zeile.knopf.classList.toggle('gesperrt', !gekauft && !bezahlbar);
       zeile.knopf.disabled = gekauft || !bezahlbar;
       zeile.preis.textContent = gekauft ? 'Gekauft ✓' : `${ganzzahl(item.preis)} Perlen`;
+    }
+  }
+
+  /* ---------------- Skillbaum ----------------
+   * Wie der Perlen-Shop eine statische Struktur, hier drei Zweige mit je drei
+   * Knoten in Freischalt-Reihenfolge – nur Zustand (gesperrt/kaufbar/frei)
+   * wird pro Aktualisierung neu gesetzt. */
+
+  const skillknotenZeilen = new Map();
+  for (const zweig of SKILLBAUM) {
+    const spalte = document.createElement('div');
+    spalte.className = 'skillzweig';
+    spalte.innerHTML = `
+      <span class="skillzweig-kopf">
+        <span class="skillzweig-kopf-symbol" aria-hidden="true">${zweig.symbol}</span>
+        <span>${zweig.name}</span>
+      </span>`;
+    zweig.knoten.forEach((knotenDef, index) => {
+      if (index > 0) {
+        const verbindung = document.createElement('div');
+        verbindung.className = 'skillknoten-verbindung';
+        spalte.appendChild(verbindung);
+        skillknotenZeilen.get(zweig.knoten[index - 1].id).verbindungDanach = verbindung;
+      }
+      const knopf = document.createElement('button');
+      knopf.className = 'skillknoten';
+      knopf.innerHTML = `
+        <span class="skillknoten-symbol" aria-hidden="true">${zweig.symbol}</span>
+        <span class="skillknoten-name">${knotenDef.name}</span>
+        <span class="skillknoten-kosten"></span>`;
+      knopf.title = knotenDef.text;
+      knopf.addEventListener('click', () => aktionen.kaufeSkillknoten(knotenDef.id));
+      spalte.appendChild(knopf);
+      skillknotenZeilen.set(knotenDef.id, { knopf, kosten: knopf.querySelector('.skillknoten-kosten') });
+    });
+    knoten.skillbaum.appendChild(spalte);
+  }
+
+  function aktualisiereSkillbaum(z) {
+    knoten.skillbaumPunkteZahl.textContent = ganzzahl(z.skillpunkte ?? 0);
+    for (const knotenDef of alleSkillknoten()) {
+      const zeile = skillknotenZeilen.get(knotenDef.id);
+      const frei = z.skillbaum.includes(knotenDef.id);
+      const voraussetzungErfuellt = !knotenDef.braucht || z.skillbaum.includes(knotenDef.braucht);
+      const kaufbar = !frei && voraussetzungErfuellt && (z.skillpunkte ?? 0) >= knotenDef.kosten;
+      zeile.knopf.classList.toggle('frei', frei);
+      zeile.knopf.classList.toggle('kaufbar', kaufbar);
+      zeile.knopf.classList.toggle('gesperrt', !frei && !kaufbar);
+      zeile.knopf.disabled = frei || !voraussetzungErfuellt || (z.skillpunkte ?? 0) < knotenDef.kosten;
+      zeile.kosten.textContent = frei ? 'Frei ✓' : `${knotenDef.kosten} SP`;
+      if (zeile.verbindungDanach) zeile.verbindungDanach.classList.toggle('frei', frei);
     }
   }
 
@@ -717,6 +772,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
       aktualisiereGluecksrad(z, jetzt);
       aktualisiereAufstieg(z);
       aktualisierePerlenShop(z);
+      aktualisiereSkillbaum(z);
       aktualisiereAusruestung(z);
       aktualisiereInventar(z);
       aktualisiereKisten(z);
@@ -860,8 +916,8 @@ export function zeigeLevelMeilenstein(ergebnis, beimSchliessen) {
   $('level-seltenheit').textContent = item ? SELTENHEITEN[item.seltenheit]?.label ?? item.seltenheit : '';
   $('level-titel').textContent = `Level ${ergebnis.level} erreicht!`;
   $('level-text').textContent = item
-    ? `Dazu gefunden: „${item.name}“ – ${item.text}`
-    : 'Ein Meilenstein, ganz ohne besonderen Fund diesmal.';
+    ? `Dazu gefunden: „${item.name}“ – ${item.text} Außerdem: +1 Skillpunkt.`
+    : 'Ein Meilenstein, ganz ohne besonderen Fund diesmal – aber +1 Skillpunkt.';
   zeigeDialog('overlay-level');
   $('level-ok').onclick = () => {
     schliesseDialog('overlay-level');

@@ -1756,6 +1756,116 @@ button {
   }
 }
 
+/* Skillbaum: drei Zweige nebeneinander, je drei Knoten senkrecht verbunden. */
+.skillbaum-punkte {
+  font-size: 13px;
+  color: var(--text-schwach);
+  margin: 4px 0 12px;
+}
+
+.skillbaum-punkte-zahl {
+  color: var(--perle);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.skillbaum {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.skillzweig {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.skillzweig-kopf {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-schwach);
+  text-align: center;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.skillzweig-kopf-symbol {
+  font-size: 18px;
+}
+
+.skillknoten-verbindung {
+  width: 2px;
+  height: 14px;
+  background: var(--rand);
+}
+
+.skillknoten-verbindung.frei {
+  background: var(--leuchten-dunkel);
+}
+
+.skillknoten {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: var(--rundung);
+  text-align: center;
+  transition: transform 0.08s, border-color 0.15s, opacity 0.15s;
+}
+
+.skillknoten:active {
+  transform: scale(0.97);
+}
+
+.skillknoten-symbol {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.skillknoten-name {
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.skillknoten-kosten {
+  font-size: 11px;
+  color: var(--text-schwach);
+  font-variant-numeric: tabular-nums;
+}
+
+.skillknoten.kaufbar {
+  border-color: var(--leuchten-dunkel);
+  background: linear-gradient(180deg, var(--flaeche-hell), var(--flaeche));
+}
+
+.skillknoten.kaufbar .skillknoten-kosten {
+  color: var(--leuchten);
+}
+
+.skillknoten.frei {
+  opacity: 0.9;
+  border-color: var(--gut);
+  background: rgba(126, 224, 129, 0.08);
+}
+
+.skillknoten.frei .skillknoten-kosten {
+  color: var(--gut);
+}
+
+.skillknoten.gesperrt {
+  opacity: 0.4;
+}
+
 /* ---------------- Computer / breiter Bildschirm ----------------
  * Bis hierhin ist die Seite fest im Hochformat-Handy-Layout gebaut (Kopf,
  * Tauchansicht, Reiter, Tafel als vier gestapelte Zeilen). Ab einer Breite,

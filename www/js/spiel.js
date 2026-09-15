@@ -28,6 +28,8 @@ import {
   gewichteteAuswahl,
   PERLEN_SHOP,
   GLUECKSRAD_SEGMENTE,
+  SKILLBAUM,
+  findeSkillknoten,
 } from './daten.js';
 
 export const SPIELSTAND_VERSION = 1;
@@ -93,6 +95,8 @@ export function neuerZustand() {
     gluecksradGedreht: 0,
     marianengrabenGesehen: false,
     levelBelohntBis: 0,
+    skillpunkte: 0,
+    skillbaum: [],
   };
 }
 
@@ -156,26 +160,34 @@ export function gesamtMultiplikator(zustand, jetzt = Date.now()) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Summiert die Wirkung aller gekauften Perlen-Shop-Vergünstigungen einer
- * bestimmten Art. Mehrere Items derselben Art würden sich addieren – aktuell
- * gibt es zwar nur je eins, das hält die Funktion aber unabhängig von der
- * genauen Anzahl der Angebote.
+ * Summiert die Wirkung aller dauerhaften Vergünstigungen einer bestimmten
+ * Art – sowohl aus dem Perlen-Shop als auch aus dem Skillbaum, die beide
+ * dasselbe { art, wert }-Format benutzen. Mehrere Quellen derselben Art
+ * addieren sich einfach.
  */
-function perlenShopSumme(zustand, art) {
+function dauerhafteBonusSumme(zustand, art) {
   let summe = 0;
   for (const id of zustand.perlenShop ?? []) {
     const item = PERLEN_SHOP.find((i) => i.id === id);
     if (item?.wirkung.art === art) summe += item.wirkung.wert;
   }
+  for (const id of zustand.skillbaum ?? []) {
+    const knoten = findeSkillknoten(id);
+    if (knoten?.wirkung.art === art) summe += knoten.wirkung.wert;
+  }
   return summe;
 }
 
-/** Effektives Kombofenster inklusive einer evtl. gekauften Verlängerung. */
+/** Effektives Kombofenster inklusive evtl. gekaufter/freigeschalteter Verlängerungen. */
 export function komboFensterEffektiv(zustand) {
   let faktor = 1;
   for (const id of zustand.perlenShop ?? []) {
     const item = PERLEN_SHOP.find((i) => i.id === id);
     if (item?.wirkung.art === 'komboFensterFaktor') faktor *= item.wirkung.wert;
+  }
+  for (const id of zustand.skillbaum ?? []) {
+    const knoten = findeSkillknoten(id);
+    if (knoten?.wirkung.art === 'komboFensterFaktor') faktor *= knoten.wirkung.wert;
   }
   return KOMBO_FENSTER_MS * faktor;
 }
@@ -194,6 +206,25 @@ export function kaufePerlenShopItem(zustand, id) {
   zustand.perlen -= item.preis;
   zustand.perlenShop.push(id);
   return { erfolg: true, item };
+}
+
+/**
+ * Schaltet einen Skillbaum-Knoten mit Skillpunkten frei. Anders als der
+ * Perlen-Shop (mit Perlen bezahlt) läuft das über eine eigene Währung, die
+ * nur durch Level-Aufstiege entsteht – ein zweiter, unabhängiger
+ * Fortschrittspfad neben den Perlen.
+ */
+export function kaufeSkillknoten(zustand, knotenId) {
+  const knoten = findeSkillknoten(knotenId);
+  if (!knoten) return { erfolg: false, grund: 'unbekannt' };
+  if (zustand.skillbaum.includes(knotenId)) return { erfolg: false, grund: 'bereits freigeschaltet' };
+  if (knoten.braucht && !zustand.skillbaum.includes(knoten.braucht)) {
+    return { erfolg: false, grund: 'Voraussetzung fehlt' };
+  }
+  if (zustand.skillpunkte < knoten.kosten) return { erfolg: false, grund: 'zu wenig Skillpunkte' };
+  zustand.skillpunkte -= knoten.kosten;
+  zustand.skillbaum.push(knotenId);
+  return { erfolg: true, knoten };
 }
 
 /* ------------------------------------------------------------------ */
@@ -226,6 +257,7 @@ function globalerFaktor(zustand) {
   for (const v of gekaufteVerbesserungen(zustand)) {
     if (v.wirkung.art === 'global') faktor *= v.wirkung.faktor;
   }
+  faktor *= 1 + dauerhafteBonusSumme(zustand, 'produktionBonus');
   return faktor;
 }
 
@@ -242,6 +274,7 @@ export function tippErtrag(zustand, jetzt = Date.now()) {
     if (v.wirkung.art === 'tippen') grund *= v.wirkung.faktor;
     if (v.wirkung.art === 'tippenAnteil') anteil += v.wirkung.anteil;
   }
+  grund *= 1 + dauerhafteBonusSumme(zustand, 'tippBonus');
   const ausProduktion = produktionProSekunde(zustand, jetzt) * anteil;
   return grund * gesamtMultiplikator(zustand, jetzt) + ausProduktion;
 }
@@ -478,7 +511,7 @@ export function offlineErtrag(zustand, verstricheneSekunden, maxStunden = OFFLIN
   const angerechnet = Math.max(0, Math.min(verstricheneSekunden, grenze));
   // Boost zählt offline ausdrücklich nicht mit.
   const proSekunde = produktionProSekunde(zustand, OHNE_BOOST);
-  const anteil = OFFLINE_ANTEIL + perlenShopSumme(zustand, 'offlineAnteilBonus');
+  const anteil = OFFLINE_ANTEIL + dauerhafteBonusSumme(zustand, 'offlineAnteilBonus');
   return {
     sekunden: angerechnet,
     abgeschnitten: verstricheneSekunden > grenze,
@@ -554,6 +587,10 @@ export function aufstieg(zustand) {
     // Level hängt an gesamtGesamt, das selbst schon erhalten bleibt - sonst
     // würden nach jedem Aufstieg alle Meilensteine erneut Ausrüstung geben.
     levelBelohntBis: zustand.levelBelohntBis,
+    // Skillpunkte und freigeschaltete Knoten sind eine dauerhafte
+    // Investition wie der Perlen-Shop, kein Runden-Fortschritt.
+    skillpunkte: zustand.skillpunkte,
+    skillbaum: zustand.skillbaum,
   };
 
   const frisch = neuerZustand();
@@ -835,6 +872,7 @@ export function pruefeLevelAufstieg(zustand, jetzt = Date.now(), zufall = Math.r
     const mindestens = Math.max(20, tippErtrag(zustand, jetzt) * 8);
     const bl = Math.max(ausProduktion, mindestens);
     gutschreiben(zustand, bl);
+    zustand.skillpunkte = (zustand.skillpunkte ?? 0) + 1;
 
     let ausruestung = null;
     if (level % LEVEL_AUSRUESTUNG_ALLE === 0) {
@@ -857,7 +895,12 @@ export function starteExpedition(zustand, expeditionId, jetzt = Date.now()) {
   const def = findeExpedition(expeditionId);
   if (!def) return { erfolg: false, grund: 'unbekannte Expedition' };
 
-  const dauer = Math.max(1000, Math.round(def.dauerMs * angelZeitFaktor(zustand)));
+  let expeditionsDauerFaktor = 1;
+  for (const id of zustand.skillbaum ?? []) {
+    const knoten = findeSkillknoten(id);
+    if (knoten?.wirkung.art === 'expeditionsDauerFaktor') expeditionsDauerFaktor *= knoten.wirkung.wert;
+  }
+  const dauer = Math.max(1000, Math.round(def.dauerMs * angelZeitFaktor(zustand) * expeditionsDauerFaktor));
   zustand.expedition = { expeditionId, startZeit: jetzt, endZeit: jetzt + dauer };
   return { erfolg: true, endZeit: zustand.expedition.endZeit };
 }
@@ -893,7 +936,7 @@ export function sammleExpedition(zustand, jetzt = Date.now(), zufall = Math.rand
   const bl = Math.max(basis, mindestens) * koederBlFaktor(zustand);
   gutschreiben(zustand, bl);
 
-  const fundBonus = angelFundChance(zustand) + koederFundBonus(zustand) + perlenShopSumme(zustand, 'fundChanceBonus');
+  const fundBonus = angelFundChance(zustand) + koederFundBonus(zustand) + dauerhafteBonusSumme(zustand, 'fundChanceBonus');
 
   let kiste = null;
   if (zufall() < def.kistenChance + fundBonus) {
