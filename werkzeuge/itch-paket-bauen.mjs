@@ -8,7 +8,7 @@
 import { rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { erzeugeZip } from './zip-erzeugen.mjs';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const WURZEL = resolve(HIER, '..');
@@ -17,20 +17,8 @@ const ZIP = resolve(WURZEL, 'itch-paket.zip');
 
 console.log('Erzeuge itch-paket.zip aus www/ ...');
 rmSync(ZIP, { force: true });
-try {
-  // PowerShell ist auf Windows immer vorhanden, kein zusätzliches Werkzeug nötig.
-  execFileSync('powershell.exe', [
-    '-NoProfile',
-    '-Command',
-    `Compress-Archive -Path '${QUELLE}\\*' -DestinationPath '${ZIP}'`,
-  ]);
-  console.log('');
-  console.log('Fertig: itch-paket.zip');
-} catch (fehler) {
-  console.warn('Konnte nicht automatisch zippen (' + (fehler?.message ?? fehler) + ').');
-  console.warn('Den Ordner www/ von Hand zu einer ZIP-Datei packen.');
-  process.exitCode = 1;
-}
+const anzahl = erzeugeZip(QUELLE, ZIP);
+console.log(`Fertig: itch-paket.zip (${anzahl} Dateien)`);
 
 console.log('');
 console.log('Nächste Schritte (nur von dir möglich, nicht automatisierbar):');

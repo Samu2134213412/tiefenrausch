@@ -14,7 +14,7 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
+import { erzeugeZip } from './zip-erzeugen.mjs';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const WURZEL = resolve(HIER, '..');
@@ -40,19 +40,8 @@ writeFileSync(indexPfad, html.replace('</head>', POKI_SCRIPT_TAG), 'utf8');
 
 console.log('Erzeuge poki-paket.zip ...');
 rmSync(ZIP, { force: true });
-try {
-  // PowerShell ist auf Windows immer vorhanden, kein zusätzliches Werkzeug nötig.
-  execFileSync('powershell.exe', [
-    '-NoProfile',
-    '-Command',
-    `Compress-Archive -Path '${ZIEL}\\*' -DestinationPath '${ZIP}'`,
-  ]);
-  console.log('');
-  console.log('Fertig: poki-paket.zip');
-} catch (fehler) {
-  console.warn('Konnte nicht automatisch zippen (' + (fehler?.message ?? fehler) + ').');
-  console.warn('Den Ordner poki-paket/ von Hand zu einer ZIP-Datei packen.');
-}
+const anzahl = erzeugeZip(ZIEL, ZIP);
+console.log(`Fertig: poki-paket.zip (${anzahl} Dateien)`);
 
 console.log('');
 console.log('Nächste Schritte (nur von dir/euch möglich, nicht automatisierbar):');
