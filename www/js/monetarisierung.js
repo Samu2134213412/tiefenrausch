@@ -2,17 +2,22 @@
  * Monetarisierung – bewusst als austauschbare Schicht.
  *
  * Das Spiel ruft hier nur `belohnungsvideo()` und `kaufeWerbefrei()` auf und
- * bekommt ein Versprechen zurück. Ob dahinter echte Werbung von AdMob steckt
- * oder die Übungsfassung, weiß der Rest des Spiels nicht.
+ * bekommt ein Versprechen zurück. Ob dahinter echte Werbung von AdMob steckt,
+ * das Poki-SDK oder die Übungsfassung, weiß der Rest des Spiels nicht.
  *
  * Warum so gebaut:
- * Für echte Werbung und echte Käufe braucht man ein Google-Play-Entwicklerkonto
- * und ein AdMob-Konto. Beides setzt Volljährigkeit bzw. die Mitwirkung eines
- * Erziehungsberechtigten voraus. Bis das eingerichtet ist, läuft das Spiel mit
- * der Übungsfassung vollständig – und wenn es so weit ist, wird an genau einer
- * Stelle umgeschaltet, ohne die Spiellogik anzufassen.
+ * Für echte Werbung über AdMob braucht man ein Google-Play-Entwicklerkonto,
+ * das Volljährigkeit bzw. die Mitwirkung eines Erziehungsberechtigten
+ * voraussetzt. Ein Poki-Konto (developers.poki.com) ist niedrigschwelliger,
+ * aber auch das muss ein Mensch selbst anlegen und einreichen – das kann
+ * dieser Code nicht vorwegnehmen. Bis eine der beiden Anbindungen aktiv ist,
+ * läuft das Spiel mit der Übungsfassung vollständig.
  *
- * Einbau der echten Werbung später (Stichworte für die Umsetzung):
+ * Erkennung zur Laufzeit: Läuft das Spiel im Poki-Iframe (`window.PokiSDK`
+ * vorhanden), wird Poki genutzt. Sonst, falls in der nativen App mit AdMob
+ * (Capacitor), wird AdMob genutzt. Sonst die Übungsfassung.
+ *
+ * Einbau von AdMob später (Stichworte):
  *   1. npm i @capacitor-community/admob
  *   2. AdMob-Konto anlegen, App-ID und Anzeigenblock-IDs eintragen
  *   3. unten in `echteSchnittstelle` die Aufrufe einsetzen
@@ -56,6 +61,65 @@ const uebungsfassung = {
 };
 
 /* ------------------------------------------------------------------ */
+/* Poki – aktiv, sobald das Spiel im Poki-Iframe läuft                 */
+/* ------------------------------------------------------------------ */
+
+/** Erkennt, ob das Poki-SDK geladen und einsatzbereit ist. */
+function pokiBruecke() {
+  return globalThis.PokiSDK ?? null;
+}
+
+const pokiSchnittstelle = {
+  name: 'Poki',
+
+  async belohnungsvideo({ beiAnzeige } = {}) {
+    const poki = pokiBruecke();
+    if (!poki) return uebungsfassung.belohnungsvideo({ beiAnzeige });
+    try {
+      // Poki will vor jeder Werbeunterbrechung wissen, dass gerade nicht
+      // aktiv gespielt wird - sonst zählt die Sitzung falsch.
+      poki.gameplayStop?.();
+      beiAnzeige?.();
+      const gesehen = await poki.rewardedBreak();
+      return { gesehen: Boolean(gesehen), uebung: false };
+    } catch (fehler) {
+      console.warn('Poki-Werbung nicht verfügbar:', fehler?.message ?? fehler);
+      return { gesehen: true, uebung: false, ersatz: true };
+    } finally {
+      poki.gameplayStart?.();
+    }
+  },
+
+  async kaufeWerbefrei() {
+    // Poki-Spiele laufen ohne eigenes Bezahlsystem - Werbung gehört zum
+    // Geschäftsmodell der Plattform und lässt sich dort nicht abschalten.
+    return { gekauft: false, uebung: false, grund: 'Auf Poki nicht verfügbar' };
+  },
+
+  async zeigeBanner() {
+    return false;
+  },
+};
+
+/**
+ * Zeigt eine Werbeunterbrechung an einem natürlichen Pausenpunkt (z. B.
+ * beim Auftauchen). Außerhalb von Poki passiert einfach nichts - andere
+ * Anbindungen kennen kein Äquivalent dazu, das ist bewusst Poki-exklusiv.
+ */
+export async function commercialBreak() {
+  const poki = pokiBruecke();
+  if (!poki) return;
+  try {
+    poki.gameplayStop?.();
+    await poki.commercialBreak();
+  } catch (fehler) {
+    console.warn('Poki-Commercial-Break fehlgeschlagen:', fehler?.message ?? fehler);
+  } finally {
+    poki.gameplayStart?.();
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Echte Anbindung – wird aktiv, sobald AdMob eingebunden ist          */
 /* ------------------------------------------------------------------ */
 
@@ -97,7 +161,7 @@ const echteSchnittstelle = {
 
 /* ------------------------------------------------------------------ */
 
-let aktiv = nativeBruecke() ? echteSchnittstelle : uebungsfassung;
+let aktiv = pokiBruecke() ? pokiSchnittstelle : nativeBruecke() ? echteSchnittstelle : uebungsfassung;
 
 export function schnittstelle() {
   return aktiv;

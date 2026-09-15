@@ -12,6 +12,14 @@
 <link rel="apple-touch-icon" href="bilder/icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- Das Poki-SDK-Script gehört bewusst NICHT hierher: dieses index.html wird
+     für GitHub Pages UND die Android-App verwendet, und Pokis SDK simuliert
+     Werbung auch außerhalb ihres Iframes (zum Testen) - würde also überall
+     die echte AdMob-Anbindung verdrängen. Das Skript wird stattdessen erst
+     von werkzeuge/poki-paket-bauen.mjs in eine separate Kopie eingefügt,
+     die nur für Poki bestimmt ist. js/start.js und monetarisierung.js
+     erkennen `window.PokiSDK` zur Laufzeit und reagieren von sich aus
+     richtig, sobald es (nur dort) vorhanden ist. -->
 </head>
 <body>
 

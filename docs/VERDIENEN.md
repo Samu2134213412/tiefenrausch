@@ -65,6 +65,12 @@ Ohne Werbebudget bleiben diese Wege:
 2. **CrazyGames / Poki** – Portale für Browser-Spiele, die Entwickler an den
    Werbeeinnahmen beteiligen. Sie nehmen nicht jedes Spiel, aber die Anfrage
    kostet nichts. Hier ist mehr Reichweite als im Play Store.
+   Für Poki gibt es `npm run poki-paket`: baut eine eigene, hochladbare
+   `poki-paket.zip` mit eingebautem Poki-SDK (Belohnungsvideo, Werbe-
+   unterbrechung beim Auftauchen), ohne www/ selbst anzufassen – das
+   normale Spiel auf GitHub Pages/Play Store merkt davon nichts. Braucht
+   trotzdem ein eigenes, kostenloses Konto auf developers.poki.com, das
+   nur ihr selbst anlegen könnt.
 3. **Reddit** – `r/incremental_games` ist genau die Zielgruppe und freut sich
    ehrlich über neue Spiele. Wichtig: als Entwickler auftreten, um Rückmeldung
    bitten, nicht werben.

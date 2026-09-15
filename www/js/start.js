@@ -25,6 +25,12 @@ import {
 import { zahl, ganzzahl, dauer } from './zahlen.js';
 import { symbolMarkup } from './symbole.js';
 
+// Poki so früh wie möglich über den Ladestart informieren - noch bevor
+// überhaupt etwas gezeichnet ist. Läuft das Spiel nicht im Poki-Iframe,
+// existiert `PokiSDK` schlicht nicht und hier passiert nichts.
+globalThis.PokiSDK?.init().catch(() => {});
+globalThis.PokiSDK?.gameLoadingStart?.();
+
 // Statische Icon-Platzhalter (Menü, Reiterleiste, Umschalter, Marianengraben-
 // Dialog, …) einmalig mit ihrem gezeichneten Symbol füllen - alles andere
 // wird laufend bei jedem `oberflaeche.aktualisiere()` neu gesetzt.
@@ -792,7 +798,7 @@ function versucheMarianengrabenZuZeigen() {
 
 /* ---------------- Aufstieg ---------------- */
 
-document.getElementById('knopf-aufstieg').addEventListener('click', () => {
+document.getElementById('knopf-aufstieg').addEventListener('click', async () => {
   const gewinn = spiel.perlenBeiAufstieg(zustand);
   if (gewinn <= 0) return;
   const sicher = globalThis.confirm(
@@ -813,6 +819,10 @@ document.getElementById('knopf-aufstieg').addEventListener('click', () => {
     oberflaeche.beben(true);
     oberflaeche.blitz();
     vibriere([30, 60, 30, 60, 80]);
+    // Der Neustart der Station ist ein echter Einschnitt - genau der
+    // natürliche Pausenpunkt, an dem eine Werbeunterbrechung hingehört
+    // (nur wirksam auf Poki, siehe monetarisierung.js).
+    await monetarisierung.commercialBreak();
   }
 });
 
@@ -834,7 +844,9 @@ document.getElementById('knopf-menue').addEventListener('click', () => {
   document.getElementById('menue-fussnote').textContent = monetarisierung.istUebungsfassung()
     ? 'Werbung und Käufe laufen zurzeit in der Übungsfassung.'
     : '';
-  document.getElementById('menue-werbefrei').hidden = zustand.werbefrei;
+  // Auf Poki gibt es kein eigenes Bezahlsystem - der Knopf würde nur zu
+  // einer Meldung führen, die nichts bewirkt, also besser gar nicht zeigen.
+  document.getElementById('menue-werbefrei').hidden = zustand.werbefrei || Boolean(globalThis.PokiSDK);
   schalterTon.setAttribute('aria-pressed', String(klang.istAn() || leseEinstellung('tiefenrausch.ton', true)));
   schalterVibration.setAttribute('aria-pressed', String(vibrationAn));
   klang.menue(true);
@@ -985,11 +997,21 @@ planeGluecksfisch();
 planeTreibendeKiste();
 requestAnimationFrame(schleife);
 
+// Ab hier ist das Spiel tatsächlich sichtbar und bedienbar - Poki wartet
+// darauf, um seinen Ladebildschirm auszublenden. Ein Idle-Spiel hat kein
+// Level/Pause im klassischen Sinn, daher zählt von hier an einfach die
+// ganze Sitzung als aktives Spielen (Unterbrechungen dafür: siehe
+// monetarisierung.js, dort klammert jede Werbeunterbrechung sich selbst ein).
+globalThis.PokiSDK?.gameLoadingFinished?.();
+globalThis.PokiSDK?.gameplayStart?.();
+
 /* ---------------- Offline-Fähigkeit ---------------- */
 
 // Der Service Worker macht das Spiel ohne Internetverbindung spielbar und
-// erlaubt die Installation auf dem Startbildschirm.
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+// erlaubt die Installation auf dem Startbildschirm. Im Poki-Iframe ist beides
+// ohne Nutzen (kein eigenes Startbildschirm-Icon, kein eigener Ursprung) und
+// von Poki nicht vorgesehen - dort bleibt es einfach aus.
+if ('serviceWorker' in navigator && location.protocol !== 'file:' && !globalThis.PokiSDK) {
   globalThis.addEventListener('load', () => {
     navigator.serviceWorker.register('./dienst.js').catch(() => {
       // Ohne Service Worker läuft das Spiel trotzdem – nur eben nicht offline.
