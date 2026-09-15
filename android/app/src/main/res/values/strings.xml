@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tiefenrausch</string>
+    <string name="title_activity_main">Tiefenrausch</string>
+    <string name="package_name">de.tiefenrausch.spiel</string>
+    <string name="custom_url_scheme">de.tiefenrausch.spiel</string>
+</resources>

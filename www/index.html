@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
+<meta name="theme-color" content="#04101f">
+<meta name="description" content="Tiefenrausch – tauche immer tiefer, sammle Biolumineszenz und entdecke, was im Dunkeln wartet.">
+<title>Tiefenrausch</title>
+<link rel="stylesheet" href="css/stil.css">
+<link rel="icon" href="bilder/symbol.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="bilder/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+
+<!-- Tauchansicht: Hintergrund, Guthaben, Antippfläche -->
+<header class="kopf" id="kopf">
+  <div class="kopf-zeile">
+    <div class="tiefe">
+      <span class="tiefe-wert" id="tiefe-wert">0</span><span class="tiefe-einheit">m</span>
+    </div>
+    <div class="zone" id="zone-name">Lichtzone</div>
+    <button class="knopf-klein" id="knopf-menue" aria-label="Menü öffnen" aria-haspopup="dialog">☰</button>
+  </div>
+  <div class="perlen-leiste" id="perlen-leiste" hidden>
+    <span aria-hidden="true">🫧</span>
+    <span id="perlen-anzahl">0</span> Perlen
+    <span class="perlen-bonus" id="perlen-bonus">+0 %</span>
+  </div>
+  <button class="tagestruhe-banner" id="tagestruhe-banner" hidden>
+    <span aria-hidden="true">🎁</span>
+    <span>Tages-Truhe abholen!</span>
+    <span class="tagestruhe-streak" id="tagestruhe-streak" hidden></span>
+  </button>
+</header>
+
+<main class="tauchansicht" id="tauchansicht">
+  <canvas id="hintergrund" aria-hidden="true"></canvas>
+  <canvas id="funken" aria-hidden="true"></canvas>
+
+  <!-- Immer sichtbarer Hinweis auf den nächsten sinnvollen Schritt – ein
+       einzelnes, konkretes Ziel statt vieler gleichzeitig offener Optionen. -->
+  <button class="ziel-chip" id="ziel-chip" hidden>
+    <span id="ziel-text"></span>
+    <span class="ziel-leiste-aussen" id="ziel-leiste-wrap" hidden>
+      <span class="ziel-leiste-innen" id="ziel-leiste"></span>
+    </span>
+  </button>
+
+  <button class="tippflaeche" id="tippflaeche" aria-label="Biolumineszenz sammeln">
+    <div class="guthaben">
+      <span class="guthaben-wert" id="guthaben">0</span>
+      <span class="guthaben-einheit">BL</span>
+    </div>
+    <div class="pro-sekunde" id="pro-sekunde">0 / Sek.</div>
+    <div class="tipp-hinweis" id="tipp-hinweis">Tippen zum Sammeln</div>
+  </button>
+
+  <div class="kombo-anzeige" id="kombo-anzeige" hidden aria-live="off">
+    <div class="kombo-leiste" id="kombo-leiste-aussen"><div class="kombo-leiste-innen" id="kombo-leiste"></div></div>
+    <span class="kombo-zahl" id="kombo-zahl">×1</span>
+    <span class="kombo-label">Kombo</span>
+  </div>
+
+  <!-- Treibt selten vorbei; verschwindet nach ein paar Sekunden von allein
+       wieder, wenn niemand antippt. Position und Bewegung setzt start.js. -->
+  <button class="leuchtblase" id="leuchtblase" hidden aria-label="Leuchtblase einsammeln – lohnt sich!">
+    <span class="leuchtblase-kern" aria-hidden="true">✨</span>
+  </button>
+
+  <!-- Schwimmt selten und schnell quer durchs Bild; fängt man ihn, gibt es
+       einen zeitlich begrenzten Produktionsboost. Bewegung setzt start.js. -->
+  <button class="gluecksfisch" id="gluecksfisch" hidden aria-label="Glücksfisch fangen – gibt einen Boost">
+    <span class="gluecksfisch-kern" aria-hidden="true">🐠</span>
+  </button>
+
+  <!-- Treibt sehr selten vorbei; enthält eine Kiste mit Ausrüstung. Wie
+       Leuchtblase/Glücksfisch bewusst langsam und lange sichtbar, damit auch
+       ungeübte oder kleine Hände sie gut treffen können. Bewegung setzt start.js. -->
+  <button class="treibende-kiste" id="treibende-kiste" hidden aria-label="Treibgut einsammeln – eine Kiste!">
+    <span class="treibende-kiste-kern" aria-hidden="true">🎁</span>
+  </button>
+
+  <!-- Erscheint mittig, sobald ein Erfolg freigeschaltet wird, und schwimmt
+       dort sanft, bis man sie antippt. Fliegt dann zur Antipp-Stelle (statt
+       einfach zu verschwinden) und öffnet sich dort – der Erfolgsmoment soll
+       sich anfassen lassen, nicht nur als Textmeldung vorbeiziehen. -->
+  <button class="erfolgs-kiste" id="erfolgs-kiste" hidden aria-label="Erfolgs-Kiste einsammeln">
+    <span class="erfolgs-kiste-schwimmer">
+      <span class="erfolgs-kiste-kern" id="erfolgs-kiste-kern" aria-hidden="true">🏆</span>
+    </span>
+  </button>
+
+  <div class="boost-anzeige" id="boost-anzeige" hidden>
+    <span aria-hidden="true">⚡</span> Doppelte Ausbeute · <span id="boost-zeit">0:00</span>
+  </div>
+
+  <div class="schwebetexte" id="schwebetexte" aria-hidden="true"></div>
+  <div class="blitz" id="kritisch-blitz" aria-hidden="true"></div>
+</main>
+
+<!-- Reiter -->
+<nav class="reiter" id="reiter" role="tablist" aria-label="Bereiche">
+  <button role="tab" id="reiter-module" aria-selected="true" aria-controls="tafel-module">
+    <span aria-hidden="true">🔧</span><span class="reiter-text">Module</span>
+    <span class="punkt" id="punkt-module" hidden></span>
+  </button>
+  <button role="tab" id="reiter-verbesserungen" aria-selected="false" aria-controls="tafel-verbesserungen">
+    <span aria-hidden="true">⭐</span><span class="reiter-text">Ausbau</span>
+    <span class="punkt" id="punkt-verbesserungen" hidden></span>
+  </button>
+  <button role="tab" id="reiter-logbuch" aria-selected="false" aria-controls="tafel-logbuch">
+    <span aria-hidden="true">📖</span><span class="reiter-text">Logbuch</span>
+    <span class="punkt" id="punkt-logbuch" hidden></span>
+  </button>
+  <button role="tab" id="reiter-expedition" aria-selected="false" aria-controls="tafel-expedition">
+    <span aria-hidden="true">🎣</span><span class="reiter-text">Expedition</span>
+    <span class="punkt" id="punkt-expedition" hidden></span>
+  </button>
+  <button role="tab" id="reiter-aufstieg" aria-selected="false" aria-controls="tafel-aufstieg">
+    <span aria-hidden="true">🫧</span><span class="reiter-text">Auftauchen</span>
+    <span class="punkt" id="punkt-aufstieg" hidden></span>
+  </button>
+</nav>
+
+<section class="tafel" id="tafel-module" role="tabpanel" aria-labelledby="reiter-module">
+  <div class="kaufmenge" role="group" aria-label="Kaufmenge">
+    <button data-menge="1" aria-pressed="true">×1</button>
+    <button data-menge="10" aria-pressed="false">×10</button>
+    <button data-menge="max" aria-pressed="false">Max</button>
+  </div>
+  <ul class="liste" id="liste-module"></ul>
+</section>
+
+<section class="tafel" id="tafel-verbesserungen" role="tabpanel" aria-labelledby="reiter-verbesserungen" hidden>
+  <ul class="liste" id="liste-verbesserungen"></ul>
+  <p class="leer-hinweis" id="verbesserungen-leer">
+    Noch nichts verfügbar. Kaufe Module und tippe weiter – dann tut sich hier etwas.
+  </p>
+</section>
+
+<section class="tafel" id="tafel-logbuch" role="tabpanel" aria-labelledby="reiter-logbuch" hidden>
+  <h2 class="tafel-titel">Entdeckungen</h2>
+  <ul class="liste logbuch" id="liste-entdeckungen"></ul>
+  <h2 class="tafel-titel">Aquarium</h2>
+  <p class="tafel-untertitel" id="aquarium-stand"></p>
+  <ul class="liste erfolge aquarium" id="liste-aquarium"></ul>
+  <h2 class="tafel-titel">Erfolge</h2>
+  <ul class="liste erfolge" id="liste-erfolge"></ul>
+</section>
+
+<section class="tafel" id="tafel-expedition" role="tabpanel" aria-labelledby="reiter-expedition" hidden>
+  <h2 class="tafel-titel">Ausrüstung</h2>
+  <div class="ausruestung-slots" id="ausruestung-slots"></div>
+
+  <h2 class="tafel-titel">Inventar</h2>
+  <ul class="liste inventar" id="liste-inventar"></ul>
+  <p class="leer-hinweis" id="inventar-leer">
+    Noch keine Ausrüstung gefunden. Kisten von Expeditionen können welche enthalten.
+  </p>
+
+  <h2 class="tafel-titel">Kisten</h2>
+  <ul class="liste kisten" id="liste-kisten"></ul>
+
+  <h2 class="tafel-titel">Expedition</h2>
+  <div class="expedition-aktiv" id="expedition-aktiv" hidden>
+    <div class="expedition-aktiv-kopf">
+      <span class="expedition-aktiv-symbol" id="expedition-aktiv-symbol" aria-hidden="true"></span>
+      <span class="expedition-aktiv-name" id="expedition-aktiv-name"></span>
+    </div>
+    <div class="expedition-leiste-aussen"><div class="expedition-leiste-innen" id="expedition-leiste"></div></div>
+    <div class="expedition-aktiv-zeit" id="expedition-aktiv-zeit"></div>
+    <button class="knopf knopf-primaer" id="knopf-expedition-abholen" disabled>Noch unterwegs …</button>
+  </div>
+  <ul class="liste expeditionen" id="liste-expeditionen" hidden></ul>
+  <p class="leer-hinweis" id="expedition-keine-angel" hidden>
+    Rüste zuerst eine Angel aus dem Inventar aus, um Expeditionen zu starten.
+  </p>
+</section>
+
+<section class="tafel" id="tafel-aufstieg" role="tabpanel" aria-labelledby="reiter-aufstieg" hidden>
+  <h2 class="tafel-titel">Glücksrad</h2>
+  <p class="tafel-untertitel">Einmal täglich drehen – von etwas Biolumineszenz bis zur Goldkiste ist alles dabei.</p>
+  <div class="gluecksrad-bereich">
+    <div class="gluecksrad-wrap">
+      <span class="gluecksrad-zeiger" aria-hidden="true"></span>
+      <div class="gluecksrad" id="gluecksrad"></div>
+      <button class="gluecksrad-knopf" id="gluecksrad-knopf">Drehen</button>
+    </div>
+    <p class="gluecksrad-status" id="gluecksrad-status"></p>
+  </div>
+
+  <div class="aufstieg-karte">
+    <h2 class="tafel-titel">Auftauchen</h2>
+    <p class="aufstieg-text">
+      Du gibst deine Station auf und kehrst an die Oberfläche zurück.
+      Module und Ausbauten gehen verloren – <strong>Perlen, Entdeckungen und Erfolge bleiben</strong>.
+      Jede Perle erhöht deine Ausbeute für immer um 2 %.
+    </p>
+    <div class="aufstieg-gewinn">
+      <span class="aufstieg-zahl" id="aufstieg-gewinn">0</span>
+      <span class="aufstieg-label">Perlen beim Auftauchen</span>
+    </div>
+    <p class="aufstieg-hinweis" id="aufstieg-hinweis"></p>
+    <button class="knopf knopf-gross" id="knopf-aufstieg" disabled>Auftauchen</button>
+  </div>
+
+  <h2 class="tafel-titel">Perlen-Shop</h2>
+  <p class="tafel-untertitel">
+    Einmalige, dauerhafte Vergünstigungen – bezahlt mit Perlen, die dir dann
+    beim passiven Bonus fehlen. Eine echte Entscheidung, kein Extra.
+  </p>
+  <ul class="liste" id="liste-perlenshop"></ul>
+</section>
+
+<!-- Überlagerungen -->
+<div class="overlay" id="overlay-willkommen" hidden role="dialog" aria-modal="true" aria-labelledby="willkommen-titel">
+  <div class="dialog">
+    <h2 id="willkommen-titel">Willkommen zurück</h2>
+    <p id="willkommen-text"></p>
+    <div class="dialog-knoepfe">
+      <button class="knopf" id="willkommen-ok">Weitertauchen</button>
+      <button class="knopf knopf-primaer" id="willkommen-verdoppeln" hidden>
+        <span aria-hidden="true">▶</span> Verdoppeln
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-entdeckung" hidden role="dialog" aria-modal="true" aria-labelledby="entdeckung-titel">
+  <div class="dialog dialog-entdeckung">
+    <div class="entdeckung-symbol" id="entdeckung-symbol" aria-hidden="true">🐟</div>
+    <p class="entdeckung-tiefe" id="entdeckung-tiefe">In 5 m Tiefe</p>
+    <h2 id="entdeckung-titel">Entdeckung</h2>
+    <p class="entdeckung-text" id="entdeckung-text"></p>
+    <p class="entdeckung-bonus" id="entdeckung-bonus"></p>
+    <button class="knopf knopf-primaer" id="entdeckung-ok">Ins Logbuch</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-kiste" hidden role="dialog" aria-modal="true" aria-labelledby="kiste-titel">
+  <div class="dialog dialog-entdeckung dialog-kiste" id="dialog-kiste">
+    <div class="kiste-symbol-wrap">
+      <span class="kiste-ring" id="kiste-ring" aria-hidden="true"></span>
+      <div class="entdeckung-symbol" id="kiste-symbol" aria-hidden="true">📦</div>
+    </div>
+    <p class="entdeckung-tiefe" id="kiste-seltenheit"></p>
+    <h2 id="kiste-titel">Kiste wird geöffnet …</h2>
+    <p class="entdeckung-text" id="kiste-text"></p>
+    <button class="knopf knopf-primaer" id="kiste-ok" hidden>Einstecken</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-expedition" hidden role="dialog" aria-modal="true" aria-labelledby="expedition-erg-titel">
+  <div class="dialog dialog-entdeckung">
+    <div class="entdeckung-symbol" id="expedition-erg-symbol" aria-hidden="true">🚣</div>
+    <h2 id="expedition-erg-titel">Zurück von der Expedition</h2>
+    <p class="entdeckung-bonus" id="expedition-erg-bl"></p>
+    <p class="entdeckung-text" id="expedition-erg-fund"></p>
+    <button class="knopf knopf-primaer" id="expedition-erg-ok">Klasse!</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-menue" hidden role="dialog" aria-modal="true" aria-labelledby="menue-titel">
+  <div class="dialog">
+    <h2 id="menue-titel">Menü</h2>
+    <dl class="werte" id="menue-werte"></dl>
+    <div class="schalter-reihe">
+      <button class="schalter" id="schalter-ton" type="button" aria-pressed="true">
+        <span class="schalter-symbol" aria-hidden="true">🔊</span> Ton
+      </button>
+      <button class="schalter" id="schalter-vibration" type="button" aria-pressed="true">
+        <span class="schalter-symbol" aria-hidden="true">📳</span> Vibration
+      </button>
+    </div>
+    <div class="menue-knoepfe">
+      <button class="knopf" id="menue-speichern">Jetzt speichern</button>
+      <button class="knopf" id="menue-sicherung">Spielstand kopieren</button>
+      <button class="knopf" id="menue-werbefrei">Werbefrei kaufen</button>
+      <button class="knopf knopf-warnung" id="menue-zuruecksetzen">Alles zurücksetzen</button>
+      <button class="knopf" id="menue-schliessen">Schließen</button>
+    </div>
+    <p class="fussnote" id="menue-fussnote"></p>
+  </div>
+</div>
+
+<div class="meldung" id="meldung" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="js/start.js"></script>
+</body>
+</html>

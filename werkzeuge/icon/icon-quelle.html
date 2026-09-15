@@ -1,0 +1,45 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0;width:1024px;height:1024px;overflow:hidden;}
+  .feld{
+    width:1024px;height:1024px;position:relative;
+    background:radial-gradient(circle at 50% 30%, #1d6f9e 0%, #0b2f52 45%, #04101f 100%);
+    display:grid;place-items:center;
+  }
+  /* Leuchtende Qualle als Sinnbild für Biolumineszenz */
+  .glocke{
+    width:430px;height:340px;border-radius:50% 50% 44% 44%;
+    background:radial-gradient(ellipse at 50% 30%, #b8fff2 0%, #4fe3d0 38%, #1f9c8c 70%, #12627a 100%);
+    box-shadow:0 0 120px 40px rgba(79,227,208,.45), inset 0 -30px 60px rgba(4,16,31,.4);
+    position:relative;margin-top:-90px;
+  }
+  .glocke::after{
+    content:'';position:absolute;left:16%;top:14%;width:36%;height:26%;
+    border-radius:50%;background:rgba(255,255,255,.5);filter:blur(14px);
+  }
+  .arme{position:absolute;top:560px;left:0;right:0;display:flex;justify-content:center;gap:34px;}
+  .arm{
+    width:20px;height:290px;border-radius:20px;
+    background:linear-gradient(180deg,#4fe3d0,rgba(79,227,208,0));
+  }
+  .arm:nth-child(odd){height:340px;}
+  .arm:nth-child(2){height:250px;}
+  .arm:nth-child(4){height:260px;}
+  .funken{position:absolute;inset:0;}
+  .funke{position:absolute;border-radius:50%;background:#dffff8;filter:blur(1px);}
+</style></head>
+<body><div class="feld">
+  <div class="glocke"></div>
+  <div class="arme"><i class="arm"></i><i class="arm"></i><i class="arm"></i><i class="arm"></i><i class="arm"></i></div>
+  <div class="funken" id="funken"></div>
+</div>
+<script>
+  const f = document.getElementById('funken');
+  const punkte = [[140,180,7],[880,240,9],[200,760,6],[840,720,8],[120,480,5],[900,470,6],[430,120,5],[620,860,7]];
+  for (const [x,y,r] of punkte) {
+    const el = document.createElement('span');
+    el.className = 'funke';
+    el.style.cssText = `left:${x}px;top:${y}px;width:${r*2}px;height:${r*2}px;opacity:${0.35+r/20}`;
+    f.appendChild(el);
+  }
+</script></body></html>

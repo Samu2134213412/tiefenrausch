@@ -1,0 +1,20 @@
+{
+  "name": "Tiefenrausch",
+  "short_name": "Tiefenrausch",
+  "description": "Tauche immer tiefer, sammle Biolumineszenz und entdecke, was im Dunkeln wartet.",
+  "lang": "de",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#04101f",
+  "theme_color": "#04101f",
+  "categories": ["games"],
+  "icons": [
+    { "src": "bilder/icon-96.png",  "sizes": "96x96",   "type": "image/png" },
+    { "src": "bilder/icon-144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "bilder/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "bilder/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "bilder/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

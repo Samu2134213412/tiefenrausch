@@ -1,0 +1,1685 @@
+/**
+ * Tiefenrausch – Gestaltung.
+ *
+ * Ausgelegt auf ein Handy im Hochformat. Der Bildschirm ist der Tauchgang:
+ * oben die Tiefe, in der Mitte das Wasser zum Antippen, unten die Station.
+ */
+
+:root {
+  --tief: #04101f;
+  --tiefer: #020a14;
+  --flaeche: #0b1e33;
+  --flaeche-hell: #12293f;
+  --rand: #1d3b55;
+  --leuchten: #4fe3d0;
+  --leuchten-dunkel: #1f9c8c;
+  --leuchten-schwach: rgba(79, 227, 208, 0.15);
+  --perle: #ffd9a0;
+  --text: #e8f2f7;
+  --text-schwach: #8aa8bd;
+  --warnung: #ff7a6b;
+  --gut: #7ee081;
+  --rundung: 14px;
+  --tippflaeche-hoehe: 1fr;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Wichtig: Eine eigene display-Regel schlägt das hidden-Attribut des Browsers.
+ * Ohne diese Zeile bleiben Dialoge unsichtbar liegen und fangen trotzdem
+ * jede Berührung ab – das Spiel wäre unbedienbar.
+ */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+}
+
+body {
+  display: grid;
+  grid-template-rows: auto minmax(140px, 1fr) auto minmax(0, 40vh);
+  background: var(--tief);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--leuchten);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------------- Kopfzeile ---------------- */
+
+.kopf {
+  padding: 10px 14px 8px;
+  background: linear-gradient(180deg, var(--tiefer), transparent);
+  z-index: 3;
+}
+
+.kopf-zeile {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.tiefe {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.tiefe-wert {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tiefe-einheit {
+  font-size: 15px;
+  color: var(--text-schwach);
+  margin-left: 2px;
+}
+
+.zone {
+  font-size: 13px;
+  color: var(--leuchten);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knopf-klein {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--flaeche);
+  font-size: 18px;
+  line-height: 1;
+  flex: none;
+  align-self: center;
+}
+
+.knopf-klein:active {
+  background: var(--flaeche-hell);
+}
+
+.perlen-leiste {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--perle);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.perlen-bonus {
+  color: var(--text-schwach);
+  margin-left: auto;
+}
+
+/* ---------------- Tages-Truhe ----------------
+ * Voller Breite, immer sichtbar wenn verfügbar (kein RNG-Timing wie bei
+ * Leuchtblase/Glücksfisch) – ein täglicher Login-Bonus darf nicht verpassbar
+ * sein, sonst wirkt er wie Pech statt wie eine Einladung wiederzukommen. */
+
+.tagestruhe-banner {
+  margin-top: 8px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 217, 160, 0.16), rgba(255, 217, 160, 0.3));
+  border: 1px solid var(--perle);
+  color: var(--perle);
+  font-weight: 700;
+  font-size: 14px;
+  animation: tagestruhe-puls 1.8s ease-in-out infinite;
+}
+
+.tagestruhe-banner:active {
+  transform: scale(0.98);
+}
+
+@keyframes tagestruhe-puls {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 217, 160, 0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(255, 217, 160, 0); }
+}
+
+.tagestruhe-streak {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* ---------------- Tauchansicht ---------------- */
+
+.tauchansicht {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+#hintergrund {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+
+/* Funkenebene: liegt über allem, blockiert aber nie das Antippen darunter. */
+#funken {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.tippflaeche {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 16px;
+}
+
+.tippflaeche:active .guthaben-wert {
+  transform: scale(0.96);
+}
+
+.guthaben {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  filter: drop-shadow(0 0 18px var(--leuchten-schwach));
+}
+
+/* Ruhiger Atem-Puls hinter der Zahl – macht die Station „lebendig“,
+   auch wenn gerade niemand tippt. */
+.guthaben::before {
+  content: "";
+  position: absolute;
+  inset: -30px -50px;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--leuchten-schwach) 0%, transparent 70%);
+  z-index: -1;
+  animation: atmen 3.2s ease-in-out infinite;
+}
+
+@keyframes atmen {
+  0%, 100% { opacity: 0.5; transform: scale(0.94); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+.guthaben-wert {
+  font-size: clamp(32px, 11vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.08s ease;
+  color: #fff;
+  display: inline-block;
+}
+
+/* Kurzer Ausschlag bei jedem Tipp – wird per JS neu getriggert
+   (Klasse entfernen/wieder setzen), reagiert also auf jeden einzelnen Tipp. */
+.guthaben-wert.puls {
+  animation: wertpuls 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes wertpuls {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+.guthaben-wert.puls-kritisch {
+  animation: wertpulskritisch 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+  color: var(--perle);
+}
+
+@keyframes wertpulskritisch {
+  0% { transform: scale(1) rotate(0deg); }
+  30% { transform: scale(1.3) rotate(-2deg); }
+  55% { transform: scale(1.1) rotate(1.5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.guthaben-einheit {
+  font-size: 16px;
+  color: var(--leuchten);
+  font-weight: 600;
+}
+
+.pro-sekunde {
+  font-size: 15px;
+  color: var(--leuchten);
+  font-variant-numeric: tabular-nums;
+}
+
+.tipp-hinweis {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-schwach);
+  animation: pulsieren 2.4s ease-in-out infinite;
+}
+
+.tipp-hinweis.aus {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes pulsieren {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.95; }
+}
+
+.boost-anzeige {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(79, 227, 208, 0.15);
+  border: 1px solid var(--leuchten-dunkel);
+  color: var(--leuchten);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+/* ---------------- Nächstes-Ziel-Chip ----------------
+ * Zeigt immer genau EINEN nächsten Schritt statt vieler Listen – weniger
+ * kognitive Last, klarerer Handlungsimpuls. `.bereit` markiert Ziele, die
+ * sofort etwas bringen (Kiste, Expedition), im Unterschied zum ruhigeren
+ * "noch sparen"-Zustand. */
+
+.ziel-chip {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(6, 20, 34, 0.62);
+  border: 1px solid var(--rand);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  max-width: 84%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ziel-chip:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+.ziel-chip.bereit {
+  border-color: var(--leuchten);
+  color: var(--leuchten);
+  animation: ziel-bereit-puls 1.4s ease-in-out infinite;
+}
+
+@keyframes ziel-bereit-puls {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 227, 208, 0.35); }
+  50% { box-shadow: 0 0 0 7px rgba(79, 227, 208, 0); }
+}
+
+.ziel-leiste-aussen {
+  width: 90px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.ziel-leiste-innen {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--leuchten);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+/* ---------------- Kombo-Anzeige ---------------- */
+
+.kombo-anzeige {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 6px;
+  background: rgba(6, 20, 34, 0.55);
+  border: 1px solid var(--rand);
+  border-radius: 999px;
+  animation: kombo-einblenden 0.18s ease;
+}
+
+@keyframes kombo-einblenden {
+  from { opacity: 0; transform: translateX(-50%) scale(0.85); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.kombo-leiste {
+  width: 46px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.kombo-leiste-innen {
+  height: 100%;
+  width: 100%;
+  background: var(--leuchten);
+  transform-origin: left center;
+  /* wird per JS über transform: scaleX() live nachgeführt (alle ~100 ms);
+     die kurze Transition glättet die einzelnen Schritte zu einem
+     kontinuierlichen Ablaufen, statt sichtbar zu ruckeln. */
+  transition: transform 0.12s linear, background-color 0.15s;
+}
+
+.kombo-zahl {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--leuchten);
+  font-variant-numeric: tabular-nums;
+}
+
+.kombo-anzeige.kombo-heiss .kombo-zahl {
+  color: var(--perle);
+}
+
+.kombo-anzeige.kombo-heiss .kombo-leiste-innen {
+  background: var(--perle);
+}
+
+.kombo-label {
+  font-size: 10.5px;
+  color: var(--text-schwach);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ---------------- Leuchtblase ----------------
+ * Treibt selten vorbei, verschwindet nach wenigen Sekunden wieder. Position
+ * und Zielposition (fürs Treiben) setzt start.js über style.left/top; die
+ * Bewegung selbst übernimmt eine CSS-Transition, kein JS-Animationsloop. */
+
+.leuchtblase {
+  position: absolute;
+  z-index: 3;
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px; /* zentriert auf die gesetzte left/top-Koordinate */
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: radial-gradient(circle at 38% 32%, #fff8e8 0%, var(--perle) 45%, #b8791f 100%);
+  box-shadow: 0 0 22px 6px rgba(255, 217, 160, 0.65), 0 0 46px 14px rgba(255, 217, 160, 0.25);
+  animation: blase-puls 1.5s ease-in-out infinite, blase-einblenden 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transition: left linear, top linear; /* Dauer setzt start.js je Auftreten */
+}
+
+.leuchtblase:active {
+  transform: scale(0.9);
+}
+
+@keyframes blase-puls {
+  0%, 100% { box-shadow: 0 0 22px 6px rgba(255, 217, 160, 0.65), 0 0 46px 14px rgba(255, 217, 160, 0.25); }
+  50% { box-shadow: 0 0 30px 10px rgba(255, 217, 160, 0.85), 0 0 60px 20px rgba(255, 217, 160, 0.4); }
+}
+
+@keyframes blase-einblenden {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.leuchtblase.ausblenden {
+  animation: blase-ausblenden 0.3s ease forwards;
+}
+
+@keyframes blase-ausblenden {
+  to { opacity: 0; transform: scale(0.4); }
+}
+
+/* ---------------- Glücksfisch ----------------
+ * Schwimmt schnell quer durchs Bild (Bewegung: JS-Transition auf left/top,
+ * wie bei der Leuchtblase). Die Blickrichtung wird über die CSS-Variable
+ * --richtung gesetzt (1 oder -1) und fließt in dieselbe Keyframe-Animation
+ * ein, die auch das Schwanzwackeln übernimmt – zwei Animationen dürften sich
+ * sonst beide dieselbe transform-Eigenschaft streitig machen. */
+
+.gluecksfisch {
+  position: absolute;
+  z-index: 3;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  filter: drop-shadow(0 0 10px rgba(190, 245, 255, 0.8)) drop-shadow(0 0 22px rgba(190, 245, 255, 0.4));
+  animation: fisch-einblenden 0.25s ease;
+  transition: left linear, top linear;
+}
+
+.gluecksfisch-kern {
+  display: block;
+  font-size: 34px;
+  transform-origin: center;
+  animation: fisch-wackeln 0.55s ease-in-out infinite;
+}
+
+@keyframes fisch-wackeln {
+  0%, 100% { transform: scaleX(var(--richtung, 1)) translateY(0) rotate(0deg); }
+  50% { transform: scaleX(var(--richtung, 1)) translateY(-4px) rotate(-4deg); }
+}
+
+@keyframes fisch-einblenden {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gluecksfisch.ausblenden {
+  animation: fisch-ausblenden 0.25s ease forwards;
+}
+
+@keyframes fisch-ausblenden {
+  to { opacity: 0; }
+}
+
+/* ---------------- Treibende Kiste ----------------
+ * Seltenes Treibgut, mechanisch wie Leuchtblase/Glücksfisch (JS setzt
+ * left/top, CSS-Transition übernimmt die Bewegung). Bewusst langsamer und
+ * länger sichtbar als beide anderen – der Fund ist wertvoller, da darf man
+ * sich auch mehr Zeit zum Zutippen lassen, gerade für jüngere Spielerinnen
+ * und Spieler mit noch ungeübter Feinmotorik. */
+
+.treibende-kiste {
+  position: absolute;
+  z-index: 3;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  background: radial-gradient(circle at 38% 32%, #fff3d6 0%, #e8b355 45%, #8a5a1f 100%);
+  box-shadow: 0 0 24px 7px rgba(232, 179, 85, 0.6), 0 0 50px 16px rgba(232, 179, 85, 0.25);
+  animation: kiste-treibend-puls 1.8s ease-in-out infinite, blase-einblenden 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transition: left linear, top linear;
+}
+
+.treibende-kiste:active {
+  transform: scale(0.9);
+}
+
+.treibende-kiste-kern {
+  display: block;
+  animation: kiste-treibend-wobble 2.6s ease-in-out infinite;
+}
+
+@keyframes kiste-treibend-puls {
+  0%, 100% { box-shadow: 0 0 24px 7px rgba(232, 179, 85, 0.6), 0 0 50px 16px rgba(232, 179, 85, 0.25); }
+  50% { box-shadow: 0 0 34px 12px rgba(232, 179, 85, 0.85), 0 0 66px 22px rgba(232, 179, 85, 0.4); }
+}
+
+@keyframes kiste-treibend-wobble {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+
+.treibende-kiste.ausblenden {
+  animation: blase-ausblenden 0.3s ease forwards;
+}
+
+/* ---------------- Erfolgs-Kiste ----------------
+ * Erscheint mittig bei einem neuen Erfolg. Drei verschachtelte Ebenen, damit
+ * sich Positionierung (JS, left/top), Dauerschwimmen (Transform-Loop) und
+ * einmaliges Erscheinen (Transform-Keyframe) nicht gegenseitig überschreiben:
+ *   .erfolgs-kiste          – Position, Glüh-Puls (nur box-shadow), Wegfliegen
+ *   .erfolgs-kiste-schwimmer – dauerhafte, sanfte Schwimmbewegung
+ *   .erfolgs-kiste-kern      – einmaliger Pop beim Erscheinen */
+
+.erfolgs-kiste {
+  position: absolute;
+  z-index: 5;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 38% 32%, #f6e6ff 0%, #b98bff 45%, #6a3fa0 100%);
+  box-shadow: 0 0 26px 8px rgba(185, 139, 255, 0.6), 0 0 54px 18px rgba(185, 139, 255, 0.28);
+  animation: erfolgskiste-puls 1.6s ease-in-out infinite;
+}
+
+.erfolgs-kiste:active {
+  transform: scale(0.92);
+}
+
+.erfolgs-kiste-schwimmer {
+  display: block;
+  font-size: 30px;
+  animation: erfolgskiste-schwimmen 4.5s ease-in-out infinite;
+}
+
+.erfolgs-kiste-kern {
+  display: inline-block;
+}
+
+.erfolgs-kiste-kern.erscheinen {
+  animation: erfolgskiste-erscheinen 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes erfolgskiste-erscheinen {
+  0% { transform: scale(0.2) rotate(-20deg); opacity: 0; }
+  70% { transform: scale(1.2) rotate(8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes erfolgskiste-schwimmen {
+  0%, 100% { transform: translate(0, 0) rotate(-3deg); }
+  25% { transform: translate(4px, -7px) rotate(2deg); }
+  50% { transform: translate(-3px, -3px) rotate(-2deg); }
+  75% { transform: translate(-5px, 4px) rotate(3deg); }
+}
+
+@keyframes erfolgskiste-puls {
+  0%, 100% { box-shadow: 0 0 26px 8px rgba(185, 139, 255, 0.6), 0 0 54px 18px rgba(185, 139, 255, 0.28); }
+  50% { box-shadow: 0 0 36px 13px rgba(185, 139, 255, 0.85), 0 0 70px 24px rgba(185, 139, 255, 0.45); }
+}
+
+/* Fliegt zur Antipp-Stelle: left/top übernimmt eine von JS gesetzte
+   Transition, hier wird nur noch das Verschwinden (Schrumpfen/Verblassen)
+   festgelegt – die Schwimmbewegung wird dafür bewusst stillgelegt. */
+.erfolgs-kiste.fliegt {
+  animation: none;
+  transform: scale(0.25);
+  opacity: 0;
+}
+
+.erfolgs-kiste.fliegt .erfolgs-kiste-schwimmer {
+  animation: none;
+}
+
+/* Aufsteigende Zahlen beim Antippen */
+.schwebetexte {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.schwebetext {
+  position: absolute;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--leuchten);
+  text-shadow: 0 0 12px rgba(79, 227, 208, 0.7);
+  animation: aufsteigen 1s ease-out forwards;
+  white-space: nowrap;
+}
+
+.schwebetext.kritisch {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--perle);
+  text-shadow: 0 0 18px rgba(255, 217, 160, 0.85), 0 0 4px #fff;
+  animation: aufsteigen-kritisch 1.15s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+.schwebetext.kombo {
+  color: #fff;
+}
+
+@keyframes aufsteigen {
+  from { transform: translate(-50%, 0) scale(0.8); opacity: 0; }
+  20%  { transform: translate(-50%, -12px) scale(1.1); opacity: 1; }
+  to   { transform: translate(-50%, -70px) scale(1); opacity: 0; }
+}
+
+@keyframes aufsteigen-kritisch {
+  0%   { transform: translate(-50%, 0) scale(0.4) rotate(-6deg); opacity: 0; }
+  18%  { transform: translate(-50%, -16px) scale(1.35) rotate(4deg); opacity: 1; }
+  35%  { transform: translate(-50%, -24px) scale(1.05) rotate(-2deg); opacity: 1; }
+  100% { transform: translate(-50%, -95px) scale(1.1) rotate(0deg); opacity: 0; }
+}
+
+/* Kurzer heller Blitz über der ganzen Tauchansicht – nur bei Kritischen. */
+.blitz {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 42%, rgba(255, 240, 210, 0.55), transparent 65%);
+  opacity: 0;
+}
+
+.blitz.an {
+  animation: blitzen 0.35s ease-out;
+}
+
+@keyframes blitzen {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Bildschirm-Zittern – kurz und dezent, für Kritische und das Auftauchen. */
+.tauchansicht.beben {
+  animation: beben 0.32s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes beben {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(3px, -2px); }
+  60% { transform: translate(-2px, -3px); }
+  80% { transform: translate(2px, 2px); }
+}
+
+.tauchansicht.beben-stark {
+  animation: beben-stark 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes beben-stark {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-7px, 4px); }
+  30% { transform: translate(6px, -4px); }
+  45% { transform: translate(-6px, -5px); }
+  60% { transform: translate(5px, 4px); }
+  75% { transform: translate(-3px, -2px); }
+  90% { transform: translate(2px, 1px); }
+}
+
+/* ---------------- Reiter ---------------- */
+
+.reiter {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: var(--tiefer);
+  border-top: 1px solid var(--rand);
+  z-index: 3;
+}
+
+.reiter button {
+  position: relative;
+  padding: 8px 2px 7px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 16px;
+  color: var(--text-schwach);
+  min-height: 52px;
+  transition: color 0.15s;
+}
+
+.reiter-text {
+  font-size: 9.5px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.reiter button[aria-selected="true"] {
+  color: var(--leuchten);
+  box-shadow: inset 0 2px 0 var(--leuchten);
+  background: rgba(79, 227, 208, 0.06);
+}
+
+.punkt {
+  position: absolute;
+  top: 6px;
+  right: calc(50% - 20px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warnung);
+  box-shadow: 0 0 8px var(--warnung);
+}
+
+/* ---------------- Tafeln ---------------- */
+
+.tafel {
+  background: var(--tiefer);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 12px calc(14px + env(safe-area-inset-bottom));
+  min-height: 0;
+}
+
+.tafel-titel {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-schwach);
+  margin: 8px 2px 8px;
+  font-weight: 600;
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leer-hinweis {
+  color: var(--text-schwach);
+  font-size: 14px;
+  text-align: center;
+  padding: 24px 16px;
+  margin: 0;
+}
+
+/* Eintrag: Modul oder Verbesserung */
+.eintrag {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: var(--rundung);
+  text-align: left;
+  transition: transform 0.08s, border-color 0.15s, opacity 0.15s;
+}
+
+.eintrag:active {
+  transform: scale(0.985);
+}
+
+.eintrag.kaufbar {
+  border-color: var(--leuchten-dunkel);
+  background: linear-gradient(180deg, var(--flaeche-hell), var(--flaeche));
+}
+
+.eintrag.gesperrt {
+  opacity: 0.45;
+}
+
+/* Perlen-Shop: dauerhaft gekaufte Vergünstigung – bewusst nicht so blass wie
+   .gesperrt, damit „schon erledigt“ sich anders anfühlt als „noch nicht
+   leistbar“. */
+.eintrag.gekauft {
+  opacity: 0.75;
+  border-color: var(--gut);
+}
+
+.eintrag.gekauft .preis-wert {
+  color: var(--gut) !important;
+}
+
+.eintrag-symbol {
+  font-size: 26px;
+  text-align: center;
+  line-height: 1;
+}
+
+.eintrag-mitte {
+  min-width: 0;
+}
+
+.eintrag-name {
+  font-weight: 650;
+  font-size: 15px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.eintrag-name > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eintrag-anzahl {
+  color: var(--leuchten);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+.eintrag-info {
+  /* display: block ist nötig – auf Inline-Elementen greift text-overflow nicht,
+     der Text würde sonst über den Preis laufen. */
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-schwach);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eintrag-preis {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.preis-wert {
+  font-weight: 650;
+  font-size: 14px;
+  display: block;
+}
+
+.eintrag.kaufbar .preis-wert {
+  color: var(--leuchten);
+}
+
+.eintrag:not(.kaufbar) .preis-wert {
+  color: var(--text-schwach);
+}
+
+.preis-menge {
+  font-size: 11px;
+  color: var(--text-schwach);
+}
+
+/* Kaufmenge-Schalter */
+.kaufmenge {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.kaufmenge button {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 9px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-schwach);
+  min-height: 36px;
+}
+
+.kaufmenge button[aria-pressed="true"] {
+  background: var(--leuchten-schwach);
+  border-color: var(--leuchten-dunkel);
+  color: var(--leuchten);
+}
+
+/* Logbuch */
+.logbuch .eintrag {
+  grid-template-columns: 44px 1fr;
+}
+
+.logbuch .eintrag.unbekannt .eintrag-symbol,
+.logbuch .eintrag.unbekannt .eintrag-name {
+  color: var(--text-schwach);
+  filter: grayscale(1) brightness(0.6);
+}
+
+.entdeckung-flavor {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-schwach);
+  font-style: italic;
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.erfolge {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+}
+
+.erfolg {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 12px;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.erfolg.offen {
+  opacity: 0.35;
+}
+
+.erfolg-symbol {
+  font-size: 22px;
+  display: block;
+}
+
+.erfolg-name {
+  font-size: 11px;
+  margin-top: 3px;
+  color: var(--text-schwach);
+  line-height: 1.25;
+}
+
+.erfolg:not(.offen) .erfolg-name {
+  color: var(--text);
+}
+
+/* ---------------- Glücksrad ---------------- */
+
+.gluecksrad-bereich {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.gluecksrad-wrap {
+  position: relative;
+  width: 216px;
+  height: 216px;
+  margin: 6px auto 12px;
+}
+
+.gluecksrad-zeiger {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 16px solid var(--perle);
+  z-index: 2;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+
+.gluecksrad {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4px solid var(--rand);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.45), inset 0 0 24px rgba(0, 0, 0, 0.35);
+  /* Die Farbsegmente selbst kommen als conic-gradient per JS (ui.js) -
+     acht feste Felder, keine Notwendigkeit, das dynamisch neu zu bauen. */
+  transition: transform 3.6s cubic-bezier(0.17, 0.89, 0.32, 1.1);
+}
+
+.gluecksrad-symbol {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 22px;
+  line-height: 1;
+  /* Radial positioniert und wieder aufgerichtet – siehe ui.js für die
+     genaue rotate/translate/rotate-Berechnung je Feld. */
+}
+
+.gluecksrad-knopf {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--leuchten-dunkel);
+  border: 3px solid var(--leuchten);
+  color: #04212a;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 0 18px rgba(79, 227, 208, 0.5);
+}
+
+.gluecksrad-knopf:active:not(:disabled) {
+  transform: translate(-50%, -50%) scale(0.94);
+}
+
+.gluecksrad-knopf:disabled {
+  background: var(--flaeche-hell);
+  border-color: var(--rand);
+  color: var(--text-schwach);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.gluecksrad-status {
+  font-size: 13px;
+  color: var(--text-schwach);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aufstieg */
+.aufstieg-karte {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: var(--rundung);
+  padding: 16px;
+  text-align: center;
+}
+
+.aufstieg-text {
+  font-size: 13.5px;
+  color: var(--text-schwach);
+  margin: 0 0 14px;
+  text-align: left;
+}
+
+.aufstieg-gewinn {
+  margin: 6px 0 10px;
+}
+
+.aufstieg-zahl {
+  display: block;
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--perle);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.aufstieg-label {
+  font-size: 12px;
+  color: var(--text-schwach);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.aufstieg-hinweis {
+  font-size: 12.5px;
+  color: var(--text-schwach);
+  margin: 0 0 12px;
+  min-height: 1.2em;
+}
+
+/* ---------------- Knöpfe ---------------- */
+
+.knopf {
+  padding: 11px 16px;
+  border-radius: 11px;
+  background: var(--flaeche-hell);
+  border: 1px solid var(--rand);
+  font-weight: 600;
+  font-size: 15px;
+  min-height: 46px;
+}
+
+.knopf:active {
+  transform: scale(0.98);
+}
+
+.knopf-primaer {
+  background: var(--leuchten-dunkel);
+  border-color: var(--leuchten);
+  color: #04212a;
+}
+
+.knopf-gross {
+  width: 100%;
+  font-size: 16px;
+  background: var(--perle);
+  border-color: var(--perle);
+  color: #3a2608;
+}
+
+.knopf-warnung {
+  color: var(--warnung);
+  border-color: rgba(255, 122, 107, 0.4);
+}
+
+.knopf[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.knopf[disabled]:active {
+  transform: none;
+}
+
+/* ---------------- Überlagerungen ---------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 16, 0.82);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+  animation: einblenden 0.2s ease;
+}
+
+@keyframes einblenden {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dialog {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 18px;
+  padding: 20px;
+  max-width: 380px;
+  width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  animation: hochgleiten 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes hochgleiten {
+  from { transform: translateY(14px) scale(0.97); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.dialog h2 {
+  margin: 0 0 10px;
+  font-size: 19px;
+}
+
+.dialog p {
+  margin: 0 0 14px;
+  font-size: 14.5px;
+  color: var(--text-schwach);
+}
+
+.dialog-knoepfe,
+.menue-knoepfe {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dialog-knoepfe {
+  flex-direction: row;
+}
+
+.dialog-knoepfe .knopf {
+  flex: 1;
+}
+
+.dialog-entdeckung {
+  text-align: center;
+}
+
+.entdeckung-symbol {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 6px;
+  animation: schweben 3s ease-in-out infinite;
+}
+
+@keyframes schweben {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+
+.entdeckung-tiefe {
+  font-size: 12px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--leuchten) !important;
+  margin-bottom: 4px !important;
+}
+
+.entdeckung-text {
+  font-style: italic;
+}
+
+.entdeckung-bonus {
+  color: var(--gut) !important;
+  font-weight: 600;
+}
+
+.werte {
+  margin: 0 0 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  font-size: 14px;
+}
+
+.werte dt {
+  color: var(--text-schwach);
+}
+
+.werte dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.schalter-reihe {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.schalter {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 0;
+  border-radius: 10px;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-schwach);
+  min-height: 40px;
+}
+
+.schalter[aria-pressed="true"] {
+  background: var(--leuchten-schwach);
+  border-color: var(--leuchten-dunkel);
+  color: var(--leuchten);
+}
+
+.schalter-symbol {
+  font-size: 15px;
+}
+
+.fussnote {
+  font-size: 11.5px !important;
+  color: var(--text-schwach);
+  margin: 14px 0 0 !important;
+  text-align: center;
+}
+
+/* ---------------- Meldung ---------------- */
+
+.meldung {
+  position: fixed;
+  left: 50%;
+  /* über der Reiterleiste bleiben: Tafel (40vh) + Höhe der Reiter */
+  bottom: calc(40vh + 64px);
+  transform: translateX(-50%);
+  background: rgba(6, 20, 34, 0.95);
+  border: 1px solid var(--rand);
+  color: var(--text);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  z-index: 40;
+  max-width: 90vw;
+  text-align: center;
+  animation: hochgleiten 0.2s ease;
+  pointer-events: none;
+}
+
+/* ---------------- Seltenheit ---------------- */
+/* Jede Seltenheitsstufe bekommt einen eigenen Akzentton, der überall
+   wiederverwendet wird: Inventar, Kisten-Reveal, Aquarium. */
+.seltenheit-gewoehnlich { --akzent: #9db3c4; }
+.seltenheit-selten      { --akzent: #4fe3d0; }
+.seltenheit-episch      { --akzent: #b98bff; }
+.seltenheit-legendaer   { --akzent: #ffd9a0; }
+
+.tafel-untertitel {
+  font-size: 12.5px;
+  color: var(--text-schwach);
+  margin: -4px 2px 8px;
+}
+
+/* ---------------- Ausrüstung ---------------- */
+
+.ausruestung-slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ausruestung-slot {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: var(--rundung);
+  padding: 10px;
+  text-align: center;
+}
+
+.ausruestung-slot.belegt {
+  border-color: var(--akzent, var(--rand));
+  background: linear-gradient(180deg, var(--flaeche-hell), var(--flaeche));
+}
+
+.ausruestung-slot-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-schwach);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ausruestung-slot-symbol {
+  font-size: 26px;
+  display: block;
+  line-height: 1.2;
+}
+
+.ausruestung-slot-name {
+  font-size: 12.5px;
+  font-weight: 650;
+  display: block;
+  margin-top: 2px;
+}
+
+.ausruestung-slot.leer .ausruestung-slot-name {
+  color: var(--text-schwach);
+  font-weight: 500;
+}
+
+/* Inventar: Item-Zeilen wie .eintrag, plus farbiger Seltenheitsrand links
+   und ein sichtbarer Zustand für „schon ausgerüstet“. */
+.inventar .eintrag {
+  border-left: 4px solid var(--akzent, var(--rand));
+}
+
+.inventar .eintrag.ausgeruestet {
+  opacity: 0.7;
+}
+
+.inventar-seltenheit {
+  color: var(--akzent);
+  font-weight: 600;
+}
+
+.inventar-status {
+  font-size: 11px;
+  color: var(--akzent);
+  font-weight: 650;
+}
+
+/* Kisten */
+.kisten .eintrag {
+  border-left: 4px solid transparent;
+}
+
+.kisten .eintrag.hat-vorrat {
+  border-left-color: var(--perle);
+}
+
+/* Expeditionen */
+.expeditionen .eintrag-info {
+  white-space: normal;
+  overflow: visible;
+}
+
+.expedition-aktiv {
+  background: var(--flaeche);
+  border: 1px solid var(--leuchten-dunkel);
+  border-radius: var(--rundung);
+  padding: 14px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.expedition-aktiv-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.expedition-aktiv-symbol {
+  font-size: 22px;
+}
+
+.expedition-aktiv-name {
+  font-weight: 650;
+}
+
+.expedition-leiste-aussen {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--tiefer);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.expedition-leiste-innen {
+  height: 100%;
+  width: 100%;
+  transform-origin: left;
+  background: linear-gradient(90deg, var(--leuchten-dunkel), var(--leuchten));
+  transition: transform 0.3s linear;
+}
+
+.expedition-aktiv-zeit {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-schwach);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+/* ---------------- Aquarium ---------------- */
+
+.aquarium .erfolg {
+  border-left: 3px solid var(--akzent, var(--rand));
+}
+
+.aquarium .erfolg.offen {
+  border-left-color: var(--rand);
+}
+
+/* ---------------- Kisten-Reveal ---------------- */
+
+.dialog-kiste {
+  border-color: var(--akzent, var(--rand));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6), 0 0 40px -10px var(--akzent, transparent);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.dialog-kiste .entdeckung-tiefe {
+  color: var(--akzent) !important;
+  min-height: 1.2em; /* reserviert die Zeile, auch bevor die Seltenheit feststeht */
+}
+
+/* Zwei Phasen statt einer einzigen Animation: erst Spannung (Wackeln bei
+   geschlossener Kiste), dann Auflösung (Aufplatzen + Ring-Burst beim
+   Aufdecken). Die eigentliche Umschaltung übernimmt ui.js per Klassenwechsel,
+   zeitlich abgestimmt auf klang.kisteOeffnen(). */
+.kiste-symbol-wrap {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 6px;
+  display: grid;
+  place-items: center;
+}
+
+.dialog-kiste .entdeckung-symbol {
+  margin: 0;
+  animation: none;
+}
+
+.dialog-kiste .entdeckung-symbol.wackelt {
+  animation: kiste-wackeln 0.65s ease-in-out;
+}
+
+@keyframes kiste-wackeln {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  15% { transform: rotate(-9deg) scale(1.03); }
+  30% { transform: rotate(8deg) scale(1.04); }
+  45% { transform: rotate(-7deg) scale(1.05); }
+  60% { transform: rotate(6deg) scale(1.05); }
+  75% { transform: rotate(-3deg) scale(1.02); }
+  90% { transform: rotate(2deg) scale(1.01); }
+}
+
+.dialog-kiste .entdeckung-symbol.geoeffnet {
+  animation: kiste-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes kiste-pop {
+  0% { transform: scale(0.5) rotate(0deg); opacity: 0.5; filter: brightness(2.2); }
+  55% { transform: scale(1.3) rotate(-4deg); opacity: 1; filter: brightness(1.4); }
+  100% { transform: scale(1) rotate(0deg); filter: brightness(1); }
+}
+
+.kiste-ring {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid var(--akzent, var(--leuchten));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kiste-ring.aktiv {
+  animation: kiste-ring-burst 0.65s ease-out forwards;
+}
+
+@keyframes kiste-ring-burst {
+  0% { opacity: 0.9; width: 14px; height: 14px; }
+  100% { opacity: 0; width: 170px; height: 170px; }
+}
+
+/* ---------------- Größere Bildschirme ---------------- */
+
+@media (min-width: 620px) {
+  body {
+    max-width: 480px;
+    margin: 0 auto;
+    border-left: 1px solid var(--rand);
+    border-right: 1px solid var(--rand);
+  }
+}
+
+@media (min-height: 800px) {
+  body {
+    grid-template-rows: auto minmax(200px, 1fr) auto minmax(0, 42vh);
+  }
+}
+
+/* ---------------- Computer / breiter Bildschirm ----------------
+ * Bis hierhin ist die Seite fest im Hochformat-Handy-Layout gebaut (Kopf,
+ * Tauchansicht, Reiter, Tafel als vier gestapelte Zeilen). Ab einer Breite,
+ * die praktisch nur auf einem Computer vorkommt, lohnt sich das nicht mehr –
+ * die Tauchansicht bekäme absurde Ränder links und rechts. Stattdessen:
+ * Tauchansicht groß links, Reiter+Tafel als Seitenleiste rechts – ähnlich
+ * wie ein Dashboard mit Hauptbereich und Sidebar. Reiter und Tafel teilen
+ * sich dieselbe Grid-Area (das bestehende Markup sieht keinen gemeinsamen
+ * Wrapper vor); ein fester Abstand schiebt die Tafel unter den Reiter statt
+ * ihn zu überlappen. */
+@media (min-width: 860px) {
+  body {
+    max-width: none;
+    border: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "kopf kopf"
+      "tauch seite";
+    height: 100vh;
+  }
+
+  .kopf {
+    grid-area: kopf;
+  }
+
+  .tauchansicht {
+    grid-area: tauch;
+    min-height: 0;
+  }
+
+  .reiter {
+    grid-area: seite;
+    border-top: none;
+    border-left: 1px solid var(--rand);
+    align-self: start;
+    z-index: 4;
+  }
+
+  .tafel {
+    grid-area: seite;
+    align-self: stretch;
+    margin-top: 62px; /* Höhe der Reiterleiste, damit sich beide nicht überlappen */
+    height: calc(100% - 62px);
+    max-height: none;
+    border-left: 1px solid var(--rand);
+  }
+
+  .meldung {
+    bottom: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
