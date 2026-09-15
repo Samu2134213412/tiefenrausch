@@ -1510,20 +1510,52 @@ button {
   font-weight: 650;
 }
 
-.expedition-leiste-aussen {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--tiefer);
-  overflow: hidden;
+/* Karte statt schlichtem Balken: ein Schiff fährt auf gestrichelter Linie
+   von der Station zum Ziel und wieder zurück - Fortschritt 0-50 % ist der
+   Hinweg, 50-100 % der Rückweg. */
+.expedition-karte {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+  padding: 0 10px;
   margin-bottom: 8px;
+  background: linear-gradient(180deg, var(--tiefer), var(--flaeche));
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-.expedition-leiste-innen {
-  height: 100%;
-  width: 100%;
-  transform-origin: left;
-  background: linear-gradient(90deg, var(--leuchten-dunkel), var(--leuchten));
-  transition: transform 0.3s linear;
+.expedition-karte-basis,
+.expedition-karte-ziel {
+  font-size: 18px;
+  line-height: 1;
+  flex: none;
+}
+
+.expedition-karte-linie {
+  position: relative;
+  flex: 1;
+  height: 0;
+  border-top: 2px dashed var(--rand);
+}
+
+.expedition-karte-schiff {
+  position: absolute;
+  top: 50%;
+  left: 0%;
+  font-size: 20px;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  transition: left 0.3s linear, transform 0.3s linear;
+  /* Emoji-Boote blicken von sich aus meist nach links; auf dem Hinweg
+     (nach rechts) deshalb gespiegelt, auf dem Rückweg (nach links) nicht -
+     siehe ui.js, das die Klasse .rueckweg je nach Fahrtrichtung setzt. */
+  transform-origin: center;
+}
+
+.expedition-karte-schiff:not(.rueckweg) {
+  transform: translate(-50%, -50%) scaleX(-1);
 }
 
 .expedition-aktiv-zeit {

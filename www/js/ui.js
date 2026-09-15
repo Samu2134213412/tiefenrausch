@@ -86,7 +86,7 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     expeditionAktiv: $('expedition-aktiv'),
     expeditionAktivSymbol: $('expedition-aktiv-symbol'),
     expeditionAktivName: $('expedition-aktiv-name'),
-    expeditionLeiste: $('expedition-leiste'),
+    expeditionKarteSchiff: $('expedition-karte-schiff'),
     expeditionAktivZeit: $('expedition-aktiv-zeit'),
     knopfExpeditionAbholen: $('knopf-expedition-abholen'),
     listeExpeditionen: $('liste-expeditionen'),
@@ -496,11 +496,18 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     if (!def) return;
     knoten.expeditionAktivSymbol.textContent = def.symbol;
     knoten.expeditionAktivName.textContent = def.name;
+    knoten.expeditionKarteSchiff.textContent = def.symbol;
 
     const gesamt = z.expedition.endZeit - z.expedition.startZeit;
     const rest = spiel.expeditionRestMs(z, jetzt);
     const anteil = gesamt > 0 ? Math.min(1, 1 - rest / gesamt) : 1;
-    knoten.expeditionLeiste.style.transform = `scaleX(${anteil})`;
+
+    // Hinweg 0-50 %: Station -> Ziel. Rückweg 50-100 %: Ziel -> Station.
+    // „Einmal hin, einmal zurück“ statt nur einer linearen Fahrt.
+    const hinweg = anteil <= 0.5;
+    const wegAnteil = hinweg ? anteil * 2 : (1 - anteil) * 2;
+    knoten.expeditionKarteSchiff.style.left = `${Math.max(0, Math.min(1, wegAnteil)) * 100}%`;
+    knoten.expeditionKarteSchiff.classList.toggle('rueckweg', !hinweg);
 
     const fertig = spiel.expeditionFertig(z, jetzt);
     knoten.expeditionAktivZeit.textContent = fertig ? 'Zurück von der Expedition!' : `Noch ${dauer(rest / 1000)}`;
