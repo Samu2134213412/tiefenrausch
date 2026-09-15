@@ -11,6 +11,7 @@
     "test": "node --test \"test/**/*.test.js\"",
     "sichttest": "node werkzeuge/sichttest.mjs",
     "icons": "node werkzeuge/icon/erzeuge.mjs",
+    "titelbild": "node werkzeuge/titelbild/erzeuge.mjs",
     "apk": "bash werkzeuge/apk-bauen.sh",
     "poki-paket": "node werkzeuge/poki-paket-bauen.mjs",
     "itch-paket": "node werkzeuge/itch-paket-bauen.mjs"

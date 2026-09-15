@@ -1,0 +1,86 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0;width:630px;height:500px;overflow:hidden;}
+  .feld{
+    width:630px;height:500px;position:relative;
+    background:linear-gradient(180deg,#173a56 0%,#0f2740 28%,#0b1e33 55%,#04101f 82%,#020a14 100%);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  }
+  /* Lichtstrahlen von oben, wie im Spiel selbst */
+  .strahl{
+    position:absolute;top:0;width:120px;height:340px;
+    background:linear-gradient(180deg,rgba(180,240,255,.16),rgba(180,240,255,0));
+    transform:skewX(-10deg);
+  }
+
+  /* Leuchtende Qualle - dieselbe Bildsprache wie im App-Icon */
+  .glocke{
+    width:172px;height:136px;border-radius:50% 50% 44% 44%;
+    background:radial-gradient(ellipse at 50% 30%, #b8fff2 0%, #4fe3d0 38%, #1f9c8c 70%, #12627a 100%);
+    box-shadow:0 0 70px 22px rgba(79,227,208,.4), inset 0 -14px 26px rgba(4,16,31,.4);
+    position:absolute;left:229px;top:70px;
+  }
+  .glocke::after{
+    content:'';position:absolute;left:16%;top:14%;width:36%;height:26%;
+    border-radius:50%;background:rgba(255,255,255,.5);filter:blur(6px);
+  }
+  .arme{position:absolute;left:229px;top:196px;width:172px;display:flex;justify-content:center;gap:13px;}
+  .arm{width:8px;border-radius:8px;background:linear-gradient(180deg,#4fe3d0,rgba(79,227,208,0));}
+
+  /* Kleine Bewohner in der Tiefe - reine Silhouetten, kein Emoji */
+  .fisch{position:absolute;opacity:.5;}
+  .fisch svg{width:100%;height:100%;fill:#6fd8cc;}
+
+  .funken{position:absolute;inset:0;}
+  .funke{position:absolute;border-radius:50%;background:#dffff8;filter:blur(.5px);}
+
+  /* Titel */
+  .titel-feld{position:absolute;left:0;right:0;bottom:0;height:190px;
+    background:linear-gradient(180deg,rgba(2,10,20,0) 0%,rgba(2,10,20,.72) 38%,rgba(2,10,20,.92) 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:34px;}
+  .titel{
+    color:#f3fbfc;font-size:64px;font-weight:800;letter-spacing:3px;margin:0;
+    text-shadow:0 0 26px rgba(79,227,208,.55), 0 2px 0 rgba(0,0,0,.4);
+  }
+  .zeile{width:120px;height:2px;margin:12px 0 14px;
+    background:linear-gradient(90deg,rgba(255,217,160,0),#ffd9a0,rgba(255,217,160,0));}
+  .zusatz{color:#9fd8e0;font-size:19px;font-weight:500;letter-spacing:.5px;margin:0;font-style:italic;}
+</style></head>
+<body><div class="feld">
+  <div class="strahl" style="left:70px;opacity:.6"></div>
+  <div class="strahl" style="left:230px;width:150px;opacity:.4"></div>
+  <div class="strahl" style="left:430px;opacity:.5"></div>
+
+  <div class="fisch" id="f1" style="left:70px;top:120px;width:46px;height:26px;transform:scaleX(-1)"></div>
+  <div class="fisch" id="f2" style="left:500px;top:150px;width:34px;height:20px;"></div>
+  <div class="fisch" id="f3" style="left:120px;top:330px;width:30px;height:18px;transform:scaleX(-1)"></div>
+  <div class="fisch" id="f4" style="left:470px;top:360px;width:52px;height:30px;"></div>
+
+  <div class="glocke"></div>
+  <div class="arme">
+    <i class="arm" style="height:96px"></i><i class="arm" style="height:120px"></i>
+    <i class="arm" style="height:80px"></i><i class="arm" style="height:112px"></i>
+    <i class="arm" style="height:92px"></i>
+  </div>
+
+  <div class="funken" id="funken"></div>
+
+  <div class="titel-feld">
+    <h1 class="titel">TIEFENRAUSCH</h1>
+    <div class="zeile"></div>
+    <p class="zusatz">Wie tief traust du dich?</p>
+  </div>
+</div>
+<script>
+  const fischPfad = '<svg viewBox="0 0 24 24"><path d="M3 12c3-4 7-6 11-6 3 0 5.5 2.5 6.5 6-1 3.5-3.5 6-6.5 6-4 0-8-2-11-6Z"/><path d="M14 12 21 8v8Z"/></svg>';
+  for (const id of ['f1','f2','f3','f4']) document.getElementById(id).innerHTML = fischPfad;
+
+  const f = document.getElementById('funken');
+  const punkte = [[90,80,4],[540,90,5],[40,220,3],[590,250,4],[300,60,3],[560,400,4],[60,420,3],[330,430,3],[480,60,3]];
+  for (const [x,y,r] of punkte) {
+    const el = document.createElement('span');
+    el.className = 'funke';
+    el.style.cssText = `left:${x}px;top:${y}px;width:${r*2}px;height:${r*2}px;opacity:${0.3+r/16}`;
+    f.appendChild(el);
+  }
+</script></body></html>
