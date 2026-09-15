@@ -357,3 +357,33 @@ export function marianengraben() {
   });
   rauschen({ dauer: 2, lautstaerke: 0.04, hochpass: 200 });
 }
+
+/** Normaler Levelaufstieg – kurz und freundlich, darf beim Grinden nicht nerven. */
+export function levelAuf() {
+  if (!bereit()) return;
+  [0, 4, 7].forEach((halbton, i) => {
+    ton({
+      frequenz: halbtonZuFrequenz(halbton, 494),
+      dauer: 0.22,
+      form: 'triangle',
+      lautstaerke: 0.22,
+      verzoegerung: i * 0.05,
+    });
+  });
+}
+
+/** Level-Meilenstein mit Ausrüstung – deutlich festlicher als der normale Levelaufstieg. */
+export function levelMeilenstein() {
+  if (!bereit()) return;
+  ton({ frequenz: 260, dauer: 0.18, form: 'triangle', lautstaerke: 0.24, gleiten: 1.5 });
+  [0, 4, 7, 12, 16].forEach((halbton, i) => {
+    ton({
+      frequenz: halbtonZuFrequenz(halbton, 494),
+      dauer: 0.4,
+      form: 'sine',
+      lautstaerke: 0.26,
+      verzoegerung: 0.1 + i * 0.06,
+    });
+  });
+  rauschen({ dauer: 0.35, lautstaerke: 0.07, hochpass: 3500 });
+}

@@ -89,7 +89,7 @@ export function zusammenfuehren(vorlage, gelesen) {
     'bl', 'gesamtRunde', 'gesamtGesamt', 'perlen', 'aufstiege',
     'tipps', 'maxTiefe', 'spielzeit', 'zuletztGespielt', 'boostBis', 'werbungGesehen',
     'komboMax', 'kritischeTreffer', 'leuchtblasenGesammelt', 'gluecksfischeGefangen',
-    'kistenGeoeffnet', 'expeditionenAbgeschlossen', 'tagesStreak', 'gluecksradGedreht',
+    'kistenGeoeffnet', 'expeditionenAbgeschlossen', 'tagesStreak', 'gluecksradGedreht', 'levelBelohntBis',
     // kombo/komboLetzterTipp bewusst NICHT übernommen: eine geladene Kombo
     // ohne aktuellen Tipp-Rhythmus wäre irreführend – sie bleibt bei 0 und
     // baut sich beim nächsten Antippen neu auf.

@@ -24,6 +24,10 @@
     <div class="zone" id="zone-name">Lichtzone</div>
     <button class="knopf-klein" id="knopf-menue" aria-label="Menü öffnen" aria-haspopup="dialog">☰</button>
   </div>
+  <div class="level-leiste" id="level-leiste" title="Level – wächst mit der gesamten Ausbeute">
+    <span class="level-abzeichen" id="level-abzeichen">Lvl 0</span>
+    <div class="level-balken-aussen"><div class="level-balken-innen" id="level-balken"></div></div>
+  </div>
   <div class="perlen-leiste" id="perlen-leiste" hidden>
     <span aria-hidden="true">🫧</span>
     <span id="perlen-anzahl">0</span> Perlen
@@ -291,6 +295,16 @@
     <dl class="werte" id="marianengraben-werte"></dl>
     <p class="marianengraben-hinweis">Die Tiefe hat damit kein Ende – du kannst jederzeit weitertauchen.</p>
     <button class="knopf knopf-primaer" id="marianengraben-ok">Weitertauchen</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay-level" hidden role="dialog" aria-modal="true" aria-labelledby="level-titel">
+  <div class="dialog dialog-entdeckung" id="dialog-level">
+    <div class="entdeckung-symbol" id="level-symbol" aria-hidden="true">⭐</div>
+    <p class="entdeckung-tiefe" id="level-seltenheit"></p>
+    <h2 id="level-titel">Level erreicht</h2>
+    <p class="entdeckung-text" id="level-text"></p>
+    <button class="knopf knopf-primaer" id="level-ok">Weiter!</button>
   </div>
 </div>
 

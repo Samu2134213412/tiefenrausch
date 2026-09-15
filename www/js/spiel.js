@@ -14,6 +14,8 @@ import {
   PERLEN_BONUS,
   perlenFuer,
   tiefeAus,
+  levelAus,
+  levelFortschritt,
   gesamtModule,
   ITEMS,
   findeItem,
@@ -90,6 +92,7 @@ export function neuerZustand() {
     gluecksradLetzteDrehung: null,
     gluecksradGedreht: 0,
     marianengrabenGesehen: false,
+    levelBelohntBis: 0,
   };
 }
 
@@ -324,6 +327,14 @@ export function aktuelleTiefe(zustand) {
   return tiefeAus(zustand.gesamtGesamt);
 }
 
+export function aktuellesLevel(zustand) {
+  return levelAus(zustand.gesamtGesamt);
+}
+
+export function aktuellerLevelFortschritt(zustand) {
+  return levelFortschritt(zustand.gesamtGesamt);
+}
+
 /**
  * Schaltet Entdeckungen frei, die durch die aktuelle Tiefe erreicht wurden.
  * @returns {Array} neu freigeschaltete Entdeckungen
@@ -540,6 +551,9 @@ export function aufstieg(zustand) {
     // Hängt an maxTiefe, das selbst schon erhalten bleibt - der Moment darf
     // nicht bei jedem weiteren Aufstieg erneut aufploppen.
     marianengrabenGesehen: zustand.marianengrabenGesehen,
+    // Level hängt an gesamtGesamt, das selbst schon erhalten bleibt - sonst
+    // würden nach jedem Aufstieg alle Meilensteine erneut Ausrüstung geben.
+    levelBelohntBis: zustand.levelBelohntBis,
   };
 
   const frisch = neuerZustand();
@@ -772,14 +786,12 @@ export function sammleErfolgsKiste(zustand, jetzt = Date.now(), zufall = Math.ra
 
 /**
  * Würfelt ein Stück Ausrüstung direkt heraus, ohne den Umweg über eine Kiste
- * – ein zweiter, direkterer Weg zu Angel/Köder als „Expedition → Kiste →
- * Item“. Eigene, mittig gewichtete Verteilung statt einer Kistenstufe, damit
- * Legendäres auch hier selten bleibt.
+ * – bekommt eine eigene Gewichtstabelle übergeben, damit unterschiedliche
+ * Quellen (Expedition, Level-Meilenstein) unterschiedlich großzügig sein
+ * können, ohne die Auswahl-Logik selbst zu verdoppeln.
  */
-const EXPEDITIONS_AUSRUESTUNG_GEWICHTE = { gewoehnlich: 55, selten: 32, episch: 11, legendaer: 2 };
-
-function wuerfleAusruestungOhneKiste(zustand, zufall) {
-  const seltenheit = gewichteteAuswahl(EXPEDITIONS_AUSRUESTUNG_GEWICHTE, zufall);
+function wuerfleAusruestungMitGewichten(zustand, gewichte, zufall) {
+  const seltenheit = gewichteteAuswahl(gewichte, zufall);
   const kandidaten = ITEMS.filter(
     (i) => i.seltenheit === seltenheit && !zustand.besitzItems.includes(i.id)
   );
@@ -788,6 +800,50 @@ function wuerfleAusruestungOhneKiste(zustand, zufall) {
   const item = kandidaten[index];
   zustand.besitzItems.push(item.id);
   return item;
+}
+
+/** Eigene, mittig gewichtete Verteilung statt einer Kistenstufe, damit
+ *  Legendäres auch beim direkten Expeditionsfund selten bleibt. */
+const EXPEDITIONS_AUSRUESTUNG_GEWICHTE = { gewoehnlich: 55, selten: 32, episch: 11, legendaer: 2 };
+
+/* ------------------------------------------------------------------ */
+/* Level: zweite Fortschrittsleiste, alle 5 Level garantiert Ausrüstung */
+/* ------------------------------------------------------------------ */
+
+/** Jedes wievielte Level eine garantierte Ausrüstung bringt statt nur BL. */
+export const LEVEL_AUSRUESTUNG_ALLE = 5;
+
+/** Großzügiger gewichtet als der beiläufige Expeditionsfund - ein
+ *  Level-Meilenstein ist eine verdiente, keine zufällige Belohnung. */
+const LEVEL_AUSRUESTUNG_GEWICHTE = { gewoehnlich: 30, selten: 42, episch: 22, legendaer: 6 };
+
+/**
+ * Schreibt alle seit dem letzten Aufruf neu erreichten Level gut - meist
+ * genau eins, nach langer Abwesenheit aber möglicherweise mehrere auf
+ * einmal. Jedes Level bringt etwas BL, jedes fünfte zusätzlich ein Stück
+ * Ausrüstung, das man noch nicht besitzt.
+ * @returns {Array<{level:number, bl:number, ausruestung:object|null}>}
+ */
+export function pruefeLevelAufstieg(zustand, jetzt = Date.now(), zufall = Math.random) {
+  const zielLevel = levelAus(zustand.gesamtGesamt);
+  const neu = [];
+  while (zustand.levelBelohntBis < zielLevel) {
+    zustand.levelBelohntBis += 1;
+    const level = zustand.levelBelohntBis;
+
+    const ausProduktion = produktionProSekunde(zustand, jetzt) * 20 * level;
+    const mindestens = Math.max(20, tippErtrag(zustand, jetzt) * 8);
+    const bl = Math.max(ausProduktion, mindestens);
+    gutschreiben(zustand, bl);
+
+    let ausruestung = null;
+    if (level % LEVEL_AUSRUESTUNG_ALLE === 0) {
+      ausruestung = wuerfleAusruestungMitGewichten(zustand, LEVEL_AUSRUESTUNG_GEWICHTE, zufall);
+    }
+
+    neu.push({ level, bl, ausruestung });
+  }
+  return neu;
 }
 
 /* ------------------------------------------------------------------ */
@@ -859,7 +915,7 @@ export function sammleExpedition(zustand, jetzt = Date.now(), zufall = Math.rand
   // öffnende Kiste – vor allem auf längeren Expeditionen spürbar.
   let ausruestung = null;
   if (zufall() < (def.ausruestungChance ?? 0) + fundBonus) {
-    ausruestung = wuerfleAusruestungOhneKiste(zustand, zufall);
+    ausruestung = wuerfleAusruestungMitGewichten(zustand, EXPEDITIONS_AUSRUESTUNG_GEWICHTE, zufall);
   }
 
   return { erfolg: true, bl, kiste, fisch, ausruestung };

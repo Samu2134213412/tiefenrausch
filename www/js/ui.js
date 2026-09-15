@@ -53,6 +53,8 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     guthaben: $('guthaben'),
     proSekunde: $('pro-sekunde'),
     tippHinweis: $('tipp-hinweis'),
+    levelAbzeichen: $('level-abzeichen'),
+    levelBalken: $('level-balken'),
     perlenLeiste: $('perlen-leiste'),
     perlenAnzahl: $('perlen-anzahl'),
     perlenBonus: $('perlen-bonus'),
@@ -566,6 +568,9 @@ export function erzeugeOberflaeche(zustand, aktionen) {
     knoten.guthaben.textContent = zahl(z.bl);
     knoten.proSekunde.textContent = `${zahl(spiel.produktionProSekunde(z, jetzt))} / Sek.`;
 
+    knoten.levelAbzeichen.textContent = `Lvl ${ganzzahl(spiel.aktuellesLevel(z))}`;
+    knoten.levelBalken.style.width = `${spiel.aktuellerLevelFortschritt(z) * 100}%`;
+
     const hatPerlen = z.perlen > 0;
     knoten.perlenLeiste.hidden = !hatPerlen;
     if (hatPerlen) {
@@ -840,6 +845,28 @@ export function zeigeAquariumFisch(fisch) {
   $('fisch-bonus').textContent = `Dauerhaft +${prozent} % Ausbeute`;
   zeigeDialog('overlay-fisch');
   $('fisch-ok').onclick = () => schliesseDialog('overlay-fisch');
+}
+
+/**
+ * Zeigt einen Level-Meilenstein (jedes fünfte Level) mit der dabei
+ * gefundenen Ausrüstung – farblich nach deren Seltenheit abgesetzt, damit
+ * der Fund sofort als etwas Besonderes erkennbar ist.
+ */
+export function zeigeLevelMeilenstein(ergebnis, beimSchliessen) {
+  const dialog = $('dialog-level');
+  const item = ergebnis.ausruestung;
+  dialog.className = `dialog dialog-entdeckung ${item ? `seltenheit-${item.seltenheit}` : ''}`;
+  $('level-symbol').textContent = item ? item.symbol : '⭐';
+  $('level-seltenheit').textContent = item ? SELTENHEITEN[item.seltenheit]?.label ?? item.seltenheit : '';
+  $('level-titel').textContent = `Level ${ergebnis.level} erreicht!`;
+  $('level-text').textContent = item
+    ? `Dazu gefunden: „${item.name}“ – ${item.text}`
+    : 'Ein Meilenstein, ganz ohne besonderen Fund diesmal.';
+  zeigeDialog('overlay-level');
+  $('level-ok').onclick = () => {
+    schliesseDialog('overlay-level');
+    beimSchliessen?.();
+  };
 }
 
 /** Zeigt, was eine abgeholte Expedition eingebracht hat. */

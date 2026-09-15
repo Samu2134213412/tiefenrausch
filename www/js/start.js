@@ -18,6 +18,7 @@ import {
   zeigeExpeditionErgebnis,
   spinneGluecksrad,
   zeigeMarianengraben,
+  zeigeLevelMeilenstein,
   fuelleMenue,
 } from './ui.js';
 import { zahl, ganzzahl, dauer } from './zahlen.js';
@@ -313,11 +314,25 @@ tippflaeche.addEventListener('keydown', (ereignis) => {
 /* ---------------- Fortschritt prüfen ---------------- */
 
 const entdeckungsWarteschlange = [];
+const levelMeilensteinWarteschlange = [];
 let dialogOffen = false;
 
 function pruefeFortschritt() {
   for (const e of spiel.pruefeEntdeckungen(zustand)) entdeckungsWarteschlange.push(e);
   if (spiel.pruefeMarianengraben(zustand)) marianengrabenBereit = true;
+
+  // Level: normale Aufstiege sind nur eine kurze Meldung, Meilensteine mit
+  // Ausrüstung bekommen einen eigenen, größeren Moment (siehe unten).
+  for (const e of spiel.pruefeLevelAufstieg(zustand)) {
+    if (e.ausruestung) {
+      klang.levelMeilenstein();
+      levelMeilensteinWarteschlange.push(e);
+    } else {
+      klang.levelAuf();
+      oberflaeche.melde(`⭐ Level ${e.level} erreicht! +${zahl(e.bl)} BL`);
+    }
+  }
+
   const neueErfolge = spiel.pruefeErfolge(zustand);
   for (const e of neueErfolge) {
     oberflaeche.melde(`${e.symbol} Erfolg: ${e.name}`);
@@ -325,6 +340,7 @@ function pruefeFortschritt() {
   }
   if (neueErfolge.length > 0) erfolgsKistenAusstehend += neueErfolge.length;
   zeigeNaechsteEntdeckung();
+  zeigeNaechstenLevelMeilenstein();
   versucheErfolgsKisteZuZeigen();
   versucheMarianengrabenZuZeigen();
 }
@@ -339,6 +355,18 @@ function zeigeNaechsteEntdeckung() {
     dialogOffen = false;
     oberflaeche.aktualisiere(zustand);
     zeigeNaechsteEntdeckung();
+  });
+}
+
+function zeigeNaechstenLevelMeilenstein() {
+  if (dialogOffen || levelMeilensteinWarteschlange.length === 0) return;
+  dialogOffen = true;
+  const naechster = levelMeilensteinWarteschlange.shift();
+  vibriere([25, 50, 25, 50, 70]);
+  zeigeLevelMeilenstein(naechster, () => {
+    dialogOffen = false;
+    oberflaeche.aktualisiere(zustand);
+    zeigeNaechstenLevelMeilenstein();
   });
 }
 

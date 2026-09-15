@@ -237,6 +237,35 @@ export function tiefeAus(gesamtVerdientGesamt) {
   return Math.floor(2 * Math.pow(gesamtVerdientGesamt, 0.27));
 }
 
+/**
+ * Level: eine zweite, langsamere Kurve über derselben Lebenszeit-Ausbeute
+ * wie die Tiefe – aber mit eigener Bedeutung. Während die Tiefe die
+ * Umgebung einfärbt, ist das Level ein reiner Fortschritts-/Belohnungstakt
+ * mit eigener Leiste und (alle 5 Level) einer garantierten Ausrüstung.
+ * Kubikwurzel statt der Tiefen-Potenz, damit die ersten Level schnell
+ * kommen und spätere spürbar länger dauern - klassische XP-Kurve.
+ */
+export const LEVEL_BASIS = 5_000;
+
+export function levelAus(gesamtVerdientGesamt) {
+  if (gesamtVerdientGesamt <= 0) return 0;
+  return Math.floor(Math.cbrt(gesamtVerdientGesamt / LEVEL_BASIS));
+}
+
+/** BL-Schwelle, ab der ein bestimmtes Level erreicht ist. */
+export function levelSchwelle(level) {
+  return Math.pow(level, 3) * LEVEL_BASIS;
+}
+
+/** Anteil des aktuellen Levels, der schon "abgelaufen" ist (0-1) - für die Leiste. */
+export function levelFortschritt(gesamtVerdientGesamt) {
+  const level = levelAus(gesamtVerdientGesamt);
+  const aktuelle = levelSchwelle(level);
+  const naechste = levelSchwelle(level + 1);
+  if (naechste <= aktuelle) return 0;
+  return Math.max(0, Math.min(1, (gesamtVerdientGesamt - aktuelle) / (naechste - aktuelle)));
+}
+
 /** Die Zonen des Ozeans – steuern Farbe und Stimmung. */
 export const ZONEN = [
   { ab: 0, name: 'Lichtzone', farbeOben: '#4db8d8', farbeUnten: '#1d6f9e' },

@@ -26,6 +26,7 @@ import {
   EXPEDITIONEN,
   PERLEN_SHOP,
   GLUECKSRAD_SEGMENTE,
+  LEVEL_BASIS,
 } from '../www/js/daten.js';
 import { zusammenfuehren, alsText, ausText } from '../www/js/speicher.js';
 import { zahl, ganzzahl, dauer, uhr } from '../www/js/zahlen.js';
@@ -1374,4 +1375,89 @@ test('Speicher: marianengrabenGesehen wird als echtes Boolean übernommen', () =
   assert.equal(zusammenfuehren(vorlage, { marianengrabenGesehen: true }).marianengrabenGesehen, true);
   assert.equal(zusammenfuehren(vorlage, { marianengrabenGesehen: 'ja' }).marianengrabenGesehen, false);
   assert.equal(zusammenfuehren(vorlage, {}).marianengrabenGesehen, false);
+});
+
+/* ------------------------------------------------------------------ */
+/* Level                                                                */
+/* ------------------------------------------------------------------ */
+
+test('Level 0 ohne jede Ausbeute, wächst danach mit gesamtGesamt', () => {
+  const z = spiel.neuerZustand();
+  assert.equal(spiel.aktuellesLevel(z), 0);
+  z.gesamtGesamt = LEVEL_BASIS - 1;
+  assert.equal(spiel.aktuellesLevel(z), 0);
+  z.gesamtGesamt = LEVEL_BASIS;
+  assert.equal(spiel.aktuellesLevel(z), 1);
+  z.gesamtGesamt = 8 * LEVEL_BASIS;
+  assert.equal(spiel.aktuellesLevel(z), 2);
+});
+
+test('Level-Fortschritt liegt bei frischem Levelaufstieg bei 0 und wächst zum nächsten hin', () => {
+  const z = spiel.neuerZustand();
+  z.gesamtGesamt = 8 * LEVEL_BASIS; // Level 2, exakte Schwelle
+  assert.equal(spiel.aktuellerLevelFortschritt(z), 0);
+  z.gesamtGesamt = (8 + 27) / 2 * LEVEL_BASIS; // Hälfte zwischen Level 2 und 3
+  assert.ok(spiel.aktuellerLevelFortschritt(z) > 0.4 && spiel.aktuellerLevelFortschritt(z) < 0.6);
+});
+
+test('Level-Aufstieg schreibt BL gut, ohne Ausrüstung außerhalb der Meilensteine', () => {
+  const z = spiel.neuerZustand();
+  z.module.qualle = 20;
+  z.gesamtGesamt = LEVEL_BASIS; // Level 1
+  const ergebnisse = spiel.pruefeLevelAufstieg(z, Date.now(), () => 0.5);
+
+  assert.equal(ergebnisse.length, 1);
+  assert.equal(ergebnisse[0].level, 1);
+  assert.ok(ergebnisse[0].bl > 0);
+  assert.equal(ergebnisse[0].ausruestung, null);
+  assert.equal(z.levelBelohntBis, 1);
+});
+
+test('Jedes fünfte Level gibt garantiert ein noch nicht besessenes Ausrüstungsteil', () => {
+  const z = spiel.neuerZustand();
+  z.module.qualle = 20;
+  z.gesamtGesamt = spiel.LEVEL_AUSRUESTUNG_ALLE ** 3 * LEVEL_BASIS; // exakt Level 5
+  const ergebnisse = spiel.pruefeLevelAufstieg(z, Date.now(), () => 0.5);
+
+  const meilenstein = ergebnisse.find((e) => e.level === 5);
+  assert.ok(meilenstein, 'Level 5 sollte erreicht worden sein');
+  assert.ok(meilenstein.ausruestung, 'Level 5 sollte Ausrüstung bringen');
+  assert.ok(z.besitzItems.includes(meilenstein.ausruestung.id));
+});
+
+test('Mehrere übersprungene Level (z. B. nach langer Abwesenheit) werden alle einzeln nachgeholt', () => {
+  const z = spiel.neuerZustand();
+  z.module.qualle = 50;
+  z.gesamtGesamt = spiel.LEVEL_AUSRUESTUNG_ALLE ** 3 * LEVEL_BASIS; // Level 5 auf einen Schlag
+  const ergebnisse = spiel.pruefeLevelAufstieg(z, Date.now(), () => 0.5);
+
+  assert.equal(ergebnisse.length, 5);
+  assert.deepEqual(ergebnisse.map((e) => e.level), [1, 2, 3, 4, 5]);
+  assert.equal(z.levelBelohntBis, 5);
+
+  // Ein weiterer Aufruf ohne neue Ausbeute darf nichts mehr auslösen.
+  assert.deepEqual(spiel.pruefeLevelAufstieg(z, Date.now(), () => 0.5), []);
+});
+
+test('Level übersteht einen Aufstieg, ohne Meilensteine erneut zu vergeben', () => {
+  const z = spiel.neuerZustand();
+  z.module.qualle = 20;
+  z.gesamtGesamt = LEVEL_BASIS;
+  spiel.pruefeLevelAufstieg(z, Date.now(), () => 0.5);
+  // aufstieg() braucht nur gesamtRunde >= Schwelle - gesamtGesamt (und damit
+  // das Level) bleiben davon unberührt und sollen es auch nach dem Aufstieg
+  // bleiben, nicht künstlich mit hochgezogen werden.
+  z.gesamtRunde = 4e6;
+
+  const belohntVorher = z.levelBelohntBis;
+  spiel.aufstieg(z);
+
+  assert.equal(z.levelBelohntBis, belohntVorher);
+  assert.deepEqual(spiel.pruefeLevelAufstieg(z), []);
+});
+
+test('Speicher: levelBelohntBis wird als Zahl übernommen, garbage wird zu 0', () => {
+  const vorlage = spiel.neuerZustand();
+  assert.equal(zusammenfuehren(vorlage, { levelBelohntBis: 12 }).levelBelohntBis, 12);
+  assert.equal(zusammenfuehren(vorlage, { levelBelohntBis: 'zwölf' }).levelBelohntBis, 0);
 });
